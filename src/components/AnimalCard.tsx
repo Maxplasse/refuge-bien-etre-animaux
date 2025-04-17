@@ -1,7 +1,9 @@
 import React from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { MapPin } from 'lucide-react';
 import { Database } from '@/types/supabase';
+import { cn } from '@/lib/utils';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 
@@ -22,17 +24,25 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <CardHeader className="p-0">
-        <div className="h-48 bg-gray-200 relative">
-          <div className="absolute bottom-2 right-2">
-            <Badge variant={animal.sterilise ? "default" : "secondary"}>
-              {animal.sterilise ? "Stérilisé" : "Non stérilisé"}
-            </Badge>
-          </div>
+      {/* Image */}
+      <div className="relative">
+        <div className="aspect-square bg-gray-200">
+          {/* Image à implémenter */}
         </div>
-      </CardHeader>
-      <CardContent className="p-4">
-        <div className="space-y-2">
+      </div>
+
+      {/* Contenu de la carte */}
+      <div className="p-3 lg:p-4">
+        {/* Version mobile */}
+        <div className="lg:hidden space-y-2">
+          <h3 className="font-semibold text-base truncate">{animal.nom}</h3>
+          <Badge variant="outline" className="capitalize text-xs">
+            {animal.espece}
+          </Badge>
+        </div>
+
+        {/* Version desktop */}
+        <div className="hidden lg:block space-y-2">
           <div className="flex justify-between items-start">
             <h3 className="font-semibold text-lg">{animal.nom}</h3>
             <Badge variant="outline" className="capitalize">
@@ -43,8 +53,7 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
           <div className="text-sm text-gray-500 space-y-1">
             <p>Race: {animal.race || "Non spécifiée"}</p>
             <p>Sexe: {animal.sexe || "Non spécifié"}</p>
-            <p>Couleurs: {animal.couleurs || "Non spécifiées"}</p>
-            <p>Date d'entrée: {formatDate(animal.date_entree)}</p>
+            <p>Date de naissance: {formatDate(animal.date_naissance)}</p>
             {animal.particularites && (
               <p className="text-shelter-purple">
                 {animal.particularites}
@@ -52,7 +61,7 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
             )}
           </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 };
