@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Plus, Calendar, LogOut } from 'lucide-react';
+import { Home, Plus, Calendar, LogOut, UserCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -29,9 +29,13 @@ const NavbarItem: React.FC<NavbarItemProps> = ({ icon, label, isActive, onClick 
 );
 
 export const Navbar: React.FC<NavbarProps> = ({ className }) => {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Afficher le bouton admin pour tous les utilisateurs connectés
+  // const isAdmin = user?.user_metadata?.role === 'admin';
+  const isAdmin = !!user;
 
   const handleSignOut = async () => {
     await signOut();
@@ -56,6 +60,14 @@ export const Navbar: React.FC<NavbarProps> = ({ className }) => {
           isActive={location.pathname === '/ajouter-animal'}
           onClick={() => navigate('/ajouter-animal')}
         />
+        {isAdmin && (
+          <NavbarItem
+            icon={<UserCog className="w-6 h-6" />}
+            label="Admin"
+            isActive={location.pathname === '/admin'}
+            onClick={() => navigate('/admin')}
+          />
+        )}
         <NavbarItem
           icon={<Calendar className="w-6 h-6" />}
           label="Calendrier"

@@ -13,6 +13,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AnimalDashboard from "@/components/AnimalDashboard";
 import AddAnimal from "./pages/AddAnimal";
 import AppLayout from "./components/AppLayout";
+// @ts-ignore
+import AdminPortal from "./pages/AdminPortal";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +37,7 @@ const App = () => (
                 <Route path="/animal/:id" element={<AnimalDetailPage />} />
                 <Route path="/dashboard" element={<AnimalDashboard />} />
                 <Route path="/ajouter-animal" element={<AddAnimal />} />
+                <Route path="/admin" element={<AdminPortal />} />
               </Route>
             </Route>
             
