@@ -62,6 +62,61 @@ export interface Database {
           created_at?: string
         }
       }
+      quarantines: {
+        Row: {
+          id: number
+          animal_id: number
+          date_debut: string
+          date_fin: string | null
+          raison: string | null
+          observations: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          animal_id: number
+          date_debut?: string
+          date_fin?: string | null
+          raison?: string | null
+          observations?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          animal_id?: number
+          date_debut?: string
+          date_fin?: string | null
+          raison?: string | null
+          observations?: string | null
+          created_at?: string
+        }
+      }
+      observations: {
+        Row: {
+          id: number
+          quarantine_id: number
+          date: string
+          description: string
+          resultat_test: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          quarantine_id: number
+          date?: string
+          description: string
+          resultat_test?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          quarantine_id?: number
+          date?: string
+          description?: string
+          resultat_test?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

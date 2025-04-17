@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Database } from '@/types/supabase';
@@ -10,6 +11,8 @@ interface AnimalCardProps {
 }
 
 const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
+  const navigate = useNavigate();
+  
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Non spécifiée";
     const date = new Date(dateString);
@@ -20,8 +23,15 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
     }).format(date);
   };
 
+  const handleClick = () => {
+    navigate(`/animal/${animal.id}`);
+  };
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card 
+      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" 
+      onClick={handleClick}
+    >
       <CardHeader className="p-0">
         <div className="h-48 bg-gray-200 relative">
           <div className="absolute bottom-2 right-2">
