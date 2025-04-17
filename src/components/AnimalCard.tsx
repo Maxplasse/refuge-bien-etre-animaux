@@ -30,7 +30,10 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card 
+      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+      onClick={handleClick}
+    >
       {/* Image */}
       <div className="relative">
         <div className="aspect-square bg-gray-200">

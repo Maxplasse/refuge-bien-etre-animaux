@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/types/supabase';
 import { Loader2, Search } from 'lucide-react';
 import { Navbar } from './Navbar';
+import Header from './Header';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 
@@ -85,6 +86,7 @@ const AnimalDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 lg:bg-white">
+      <Header className="hidden lg:flex" />
       <div className="px-4 lg:px-8 py-6 space-y-6 pb-24 lg:pb-6">
         {/* Barre de recherche */}
         <div className="relative">
