@@ -1,10 +1,10 @@
 import React from 'react';
-
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
 import { Database } from '@/types/supabase';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 
