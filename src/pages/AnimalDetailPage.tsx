@@ -28,7 +28,7 @@ const AnimalDetailPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [formData, setFormData] = useState<Partial<Animal>>({});
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState("informations");
+  const [activeTab, setActiveTab] = useState("quarantine");
 
   useEffect(() => {
     const fetchAnimal = async () => {
@@ -170,8 +170,8 @@ const AnimalDetailPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 lg:bg-white">
       <Header className="hidden lg:flex" />
-      <div className="px-4 lg:px-8 py-6 space-y-6 pb-24 lg:pb-6">
-        <div className="flex justify-between items-center mb-4">
+      <div className="px-4 lg:px-8 py-6 pb-24 lg:pb-6">
+        <div className="flex justify-between items-center mb-6">
           <Button onClick={goBack} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Retour
@@ -212,18 +212,19 @@ const AnimalDetailPage: React.FC = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
-            <Card>
-              <div className="h-64 bg-gray-200 relative">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left column - Sticky on desktop, top on mobile */}
+          <div className="w-full lg:w-2/5 lg:sticky lg:top-4 lg:self-start order-1 lg:order-1">
+            <Card className="w-full h-full">
+              <div className="h-64 sm:h-80 bg-gray-200 relative">
                 <div className="absolute bottom-2 right-2">
                   <Badge variant={animal.sterilise ? "default" : "secondary"}>
                     {animal.sterilise ? "Stérilisé" : "Non stérilisé"}
                   </Badge>
                 </div>
               </div>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-4">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-6">
                   {isEditing ? (
                     <div className="w-full">
                       <Label htmlFor="nom">Nom</Label>
@@ -264,11 +265,182 @@ const AnimalDetailPage: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <h2 className="text-2xl font-bold">{animal.nom}</h2>
-                      <Badge variant="outline" className="capitalize">
+                    <div className="w-full">
+                      <h2 className="text-3xl font-bold mb-2">{animal.nom}</h2>
+                      <Badge variant="outline" className="capitalize text-base">
                         {animal.espece}
                       </Badge>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold border-b pb-2">Informations générales</h3>
+                  
+                  {isEditing ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="race">Race</Label>
+                        <Input 
+                          id="race"
+                          name="race"
+                          value={formData.race || ''}
+                          onChange={handleInputChange}
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="sexe">Sexe</Label>
+                        <Select 
+                          value={formData.sexe || ''} 
+                          onValueChange={(value) => handleSelectChange(value, 'sexe')}
+                        >
+                          <SelectTrigger id="sexe">
+                            <SelectValue placeholder="Sélectionner un sexe" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="M">Mâle</SelectItem>
+                            <SelectItem value="F">Femelle</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="couleurs">Couleurs</Label>
+                        <Input 
+                          id="couleurs"
+                          name="couleurs"
+                          value={formData.couleurs || ''}
+                          onChange={handleInputChange}
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="date_naissance">Date de naissance</Label>
+                        <Input 
+                          id="date_naissance"
+                          name="date_naissance"
+                          type="date"
+                          value={formatDateForInput(formData.date_naissance)}
+                          onChange={handleInputChange}
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="date_entree">Date d'entrée</Label>
+                        <Input 
+                          id="date_entree"
+                          name="date_entree"
+                          type="date"
+                          value={formatDateForInput(formData.date_entree)}
+                          onChange={handleInputChange}
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="identification">Identification</Label>
+                        <Input 
+                          id="identification"
+                          name="identification"
+                          value={formData.identification || ''}
+                          onChange={handleInputChange}
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="particularites">Particularités</Label>
+                        <Textarea 
+                          id="particularites"
+                          name="particularites"
+                          value={formData.particularites || ''}
+                          onChange={handleInputChange}
+                          className="mt-1"
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="provenance">Provenance</Label>
+                        <Textarea 
+                          id="provenance"
+                          name="provenance"
+                          value={formData.provenance || ''}
+                          onChange={handleInputChange}
+                          className="mt-1"
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="proprietaire">Propriétaire</Label>
+                        <Input 
+                          id="proprietaire"
+                          name="proprietaire"
+                          value={formData.proprietaire || ''}
+                          onChange={handleInputChange}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="text-sm text-gray-500">Race</h4>
+                          <p>{animal.race || "Non spécifiée"}</p>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm text-gray-500">Sexe</h4>
+                          <p>{animal.sexe === 'M' ? 'Mâle' : animal.sexe === 'F' ? 'Femelle' : "Non spécifié"}</p>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm text-gray-500">Couleurs</h4>
+                          <p>{animal.couleurs || "Non spécifiées"}</p>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm text-gray-500">Date de naissance</h4>
+                          <p>{formatDate(animal.date_naissance)}</p>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm text-gray-500">Date d'entrée</h4>
+                          <p>{formatDate(animal.date_entree)}</p>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm text-gray-500">Identification</h4>
+                          <p>{animal.identification || "Non spécifiée"}</p>
+                        </div>
+                      </div>
+
+                      {animal.particularites && (
+                        <div>
+                          <h3 className="text-lg font-semibold border-b pb-2 mt-6">Particularités</h3>
+                          <p className="mt-2">{animal.particularites}</p>
+                        </div>
+                      )}
+                      
+                      {animal.provenance && (
+                        <div>
+                          <h3 className="text-lg font-semibold border-b pb-2 mt-6">Provenance</h3>
+                          <p className="mt-2">{animal.provenance}</p>
+                        </div>
+                      )}
+                      
+                      {animal.proprietaire && (
+                        <div>
+                          <h3 className="text-lg font-semibold border-b pb-2 mt-6">Propriétaire</h3>
+                          <p className="mt-2">{animal.proprietaire}</p>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -276,198 +448,15 @@ const AnimalDetailPage: React.FC = () => {
             </Card>
           </div>
 
-          <div className="md:col-span-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full mb-4">
-                <TabsTrigger value="informations" className="flex-1">Informations générales</TabsTrigger>
-                <TabsTrigger value="quarantine" className="flex-1">Quarantaine</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="informations">
-                <Card>
-                  <CardContent className="p-6 space-y-4">
-                    <h3 className="text-xl font-semibold border-b pb-2">Informations générales</h3>
-                    
-                    {isEditing ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="race">Race</Label>
-                          <Input 
-                            id="race"
-                            name="race"
-                            value={formData.race || ''}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                          />
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="sexe">Sexe</Label>
-                          <Select 
-                            value={formData.sexe || ''} 
-                            onValueChange={(value) => handleSelectChange(value, 'sexe')}
-                          >
-                            <SelectTrigger id="sexe">
-                              <SelectValue placeholder="Sélectionner un sexe" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="M">Mâle</SelectItem>
-                              <SelectItem value="F">Femelle</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="couleurs">Couleurs</Label>
-                          <Input 
-                            id="couleurs"
-                            name="couleurs"
-                            value={formData.couleurs || ''}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                          />
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="date_naissance">Date de naissance</Label>
-                          <Input 
-                            id="date_naissance"
-                            name="date_naissance"
-                            type="date"
-                            value={formatDateForInput(formData.date_naissance)}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                          />
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="date_entree">Date d'entrée</Label>
-                          <Input 
-                            id="date_entree"
-                            name="date_entree"
-                            type="date"
-                            value={formatDateForInput(formData.date_entree)}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                          />
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="identification">Identification</Label>
-                          <Input 
-                            id="identification"
-                            name="identification"
-                            value={formData.identification || ''}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                          />
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <Label htmlFor="particularites">Particularités</Label>
-                          <Textarea 
-                            id="particularites"
-                            name="particularites"
-                            value={formData.particularites || ''}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                            rows={3}
-                          />
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <Label htmlFor="provenance">Provenance</Label>
-                          <Textarea 
-                            id="provenance"
-                            name="provenance"
-                            value={formData.provenance || ''}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                            rows={2}
-                          />
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <Label htmlFor="proprietaire">Propriétaire</Label>
-                          <Input 
-                            id="proprietaire"
-                            name="proprietaire"
-                            value={formData.proprietaire || ''}
-                            onChange={handleInputChange}
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="text-sm text-gray-500">Race</h4>
-                            <p>{animal.race || "Non spécifiée"}</p>
-                          </div>
-                          
-                          <div>
-                            <h4 className="text-sm text-gray-500">Sexe</h4>
-                            <p>{animal.sexe || "Non spécifié"}</p>
-                          </div>
-                          
-                          <div>
-                            <h4 className="text-sm text-gray-500">Couleurs</h4>
-                            <p>{animal.couleurs || "Non spécifiées"}</p>
-                          </div>
-                          
-                          <div>
-                            <h4 className="text-sm text-gray-500">Date de naissance</h4>
-                            <p>{formatDate(animal.date_naissance)}</p>
-                          </div>
-                          
-                          <div>
-                            <h4 className="text-sm text-gray-500">Date d'entrée</h4>
-                            <p>{formatDate(animal.date_entree)}</p>
-                          </div>
-                          
-                          <div>
-                            <h4 className="text-sm text-gray-500">Identification</h4>
-                            <p>{animal.identification || "Non spécifiée"}</p>
-                          </div>
-                        </div>
-
-                        {animal.particularites && (
-                          <div>
-                            <h3 className="text-xl font-semibold border-b pb-2 mt-6">Particularités</h3>
-                            <p className="mt-2">{animal.particularites}</p>
-                          </div>
-                        )}
-                        
-                        {animal.provenance && (
-                          <div>
-                            <h3 className="text-xl font-semibold border-b pb-2 mt-6">Provenance</h3>
-                            <p className="mt-2">{animal.provenance}</p>
-                          </div>
-                        )}
-                        
-                        {animal.proprietaire && (
-                          <div>
-                            <h3 className="text-xl font-semibold border-b pb-2 mt-6">Propriétaire</h3>
-                            <p className="mt-2">{animal.proprietaire}</p>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="quarantine">
-                <Card>
-                  <CardContent className="p-6">
-                    {animal && animal.id && (
-                      <QuarantineManagement animalId={animal.id} />
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+          {/* Right column - Quarantine tab */}
+          <div className="w-full lg:w-3/5 order-2 lg:order-2">
+            <Card>
+              <CardContent className="p-6">
+                {animal && animal.id && (
+                  <QuarantineManagement animalId={animal.id} />
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
