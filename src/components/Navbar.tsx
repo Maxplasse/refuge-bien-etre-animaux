@@ -2,7 +2,7 @@ import React from 'react';
 import { Home, Plus, Calendar, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface NavbarProps {
   className?: string;
@@ -31,6 +31,7 @@ const NavbarItem: React.FC<NavbarItemProps> = ({ icon, label, isActive, onClick 
 export const Navbar: React.FC<NavbarProps> = ({ className }) => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignOut = async () => {
     await signOut();
@@ -46,15 +47,20 @@ export const Navbar: React.FC<NavbarProps> = ({ className }) => {
         <NavbarItem
           icon={<Home className="w-6 h-6" />}
           label="Tableau de bord"
-          isActive={true}
+          isActive={location.pathname === '/' || location.pathname === '/dashboard'}
+          onClick={() => navigate('/')}
         />
         <NavbarItem
           icon={<Plus className="w-6 h-6" />}
           label="Ajouter"
+          isActive={location.pathname === '/ajouter-animal'}
+          onClick={() => navigate('/ajouter-animal')}
         />
         <NavbarItem
           icon={<Calendar className="w-6 h-6" />}
           label="Calendrier"
+          isActive={location.pathname === '/calendrier'}
+          onClick={() => navigate('/calendrier')}
         />
         <NavbarItem
           icon={<LogOut className="w-6 h-6" />}

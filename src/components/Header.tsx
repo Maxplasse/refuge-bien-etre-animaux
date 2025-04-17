@@ -2,8 +2,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/Logo';
 import { useAuth } from '@/lib/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { LogOut, User } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { LogOut, User, Plus } from 'lucide-react';
 
 interface HeaderProps {
   className?: string;
@@ -26,6 +26,18 @@ const Header: React.FC<HeaderProps> = ({ className }) => {
       </div>
       
       <div className="flex items-center gap-4">
+        <Button
+          variant="default"
+          size="sm"
+          className="flex items-center gap-1 bg-shelter-purple hover:bg-shelter-purple/90"
+          asChild
+        >
+          <Link to="/ajouter-animal">
+            <Plus className="h-4 w-4" />
+            <span>Ajouter un animal</span>
+          </Link>
+        </Button>
+        
         {user && (
           <div className="hidden md:flex items-center text-sm text-gray-600">
             <User className="h-4 w-4 mr-1" />
