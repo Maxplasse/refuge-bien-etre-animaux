@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
@@ -12,6 +13,8 @@ interface AnimalCardProps {
 }
 
 const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
+  const navigate = useNavigate();
+  
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Non spécifiée";
     const date = new Date(dateString);
@@ -20,6 +23,10 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
       month: '2-digit',
       year: 'numeric'
     }).format(date);
+  };
+
+  const handleClick = () => {
+    navigate(`/animal/${animal.id}`);
   };
 
   return (
