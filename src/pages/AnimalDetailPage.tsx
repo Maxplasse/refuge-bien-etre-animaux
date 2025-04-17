@@ -13,9 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import QuarantineManagement from '@/components/QuarantineManagement';
+import HealthManagement from '@/components/HealthManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';
 import { Navbar } from '@/components/Navbar';
+import { cn } from '@/lib/utils';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 
@@ -171,45 +173,11 @@ const AnimalDetailPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 lg:bg-white">
       <Header className="hidden lg:flex" />
       <div className="px-4 lg:px-8 py-6 pb-24 lg:pb-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center mb-6">
           <Button onClick={goBack} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Retour
           </Button>
-          
-          {isEditing ? (
-            <div className="flex gap-2">
-              <Button 
-                onClick={toggleEdit} 
-                variant="outline"
-                className="text-red-500"
-              >
-                <X className="mr-2 h-4 w-4" />
-                Annuler
-              </Button>
-              <Button 
-                onClick={saveChanges} 
-                variant="default"
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Enregistrer
-              </Button>
-            </div>
-          ) : (
-            <Button 
-              onClick={toggleEdit} 
-              variant="default" 
-              className="bg-shelter-purple hover:bg-shelter-purple/90 text-white"
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Modifier
-            </Button>
-          )}
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -227,13 +195,37 @@ const AnimalDetailPage: React.FC = () => {
                 <div className="flex justify-between items-start mb-6">
                   {isEditing ? (
                     <div className="w-full">
-                      <Label htmlFor="nom">Nom</Label>
+                      <div className="flex justify-between items-start mb-4">
+                        <Label htmlFor="nom" className="text-lg">Nom</Label>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={toggleEdit} 
+                            variant="outline"
+                            className="text-red-500"
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Annuler
+                          </Button>
+                          <Button 
+                            onClick={saveChanges} 
+                            variant="default"
+                            disabled={isSaving}
+                          >
+                            {isSaving ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Save className="mr-2 h-4 w-4" />
+                            )}
+                            Enregistrer
+                          </Button>
+                        </div>
+                      </div>
                       <Input 
                         id="nom"
                         name="nom"
                         value={formData.nom || ''}
                         onChange={handleInputChange}
-                        className="font-bold text-lg mt-1"
+                        className="font-bold text-lg mb-4"
                       />
                       <div className="mt-4">
                         <Label htmlFor="espece">Espèce</Label>
@@ -265,11 +257,22 @@ const AnimalDetailPage: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full">
-                      <h2 className="text-3xl font-bold mb-2">{animal.nom}</h2>
-                      <Badge variant="outline" className="capitalize text-base">
-                        {animal.espece}
-                      </Badge>
+                    <div className="w-full flex justify-between items-start">
+                      <div>
+                        <h2 className="text-3xl font-bold mb-2">{animal.nom}</h2>
+                        <Badge variant="outline" className="capitalize text-base">
+                          {animal.espece}
+                        </Badge>
+                      </div>
+                      
+                      <Button 
+                        onClick={toggleEdit} 
+                        variant="default" 
+                        className="bg-shelter-purple hover:bg-shelter-purple/90 text-white"
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Modifier
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -448,13 +451,33 @@ const AnimalDetailPage: React.FC = () => {
             </Card>
           </div>
 
-          {/* Right column - Quarantine tab */}
+          {/* Right column with tabs */}
           <div className="w-full lg:w-3/5 order-2 lg:order-2">
             <Card>
               <CardContent className="p-6">
-                {animal && animal.id && (
-                  <QuarantineManagement animalId={animal.id} />
-                )}
+                <Tabs 
+                  defaultValue="quarantine" 
+                  value={activeTab} 
+                  onValueChange={setActiveTab}
+                  className="w-full"
+                >
+                  <TabsList className="w-full grid grid-cols-2 mb-6">
+                    <TabsTrigger value="quarantine">Quarantaine</TabsTrigger>
+                    <TabsTrigger value="health">Santé</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="quarantine">
+                    {animal && animal.id && (
+                      <QuarantineManagement animalId={animal.id} />
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="health">
+                    {animal && animal.id && (
+                      <HealthManagement animalId={animal.id} />
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </div>
