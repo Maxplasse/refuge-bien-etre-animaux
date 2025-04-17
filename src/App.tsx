@@ -11,6 +11,8 @@ import Register from "./pages/Register";
 import { AuthProvider } from "@/lib/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AnimalDashboard from "@/components/AnimalDashboard";
+import AddAnimal from "./pages/AddAnimal";
+import AppLayout from "./components/AppLayout";
 
 const queryClient = new QueryClient();
 
@@ -28,9 +30,12 @@ const App = () => (
             
             {/* Routes protégées */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/animal/:id" element={<AnimalDetailPage />} />
-              <Route path="/dashboard" element={<AnimalDashboard />} />
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/animal/:id" element={<AnimalDetailPage />} />
+                <Route path="/dashboard" element={<AnimalDashboard />} />
+                <Route path="/ajouter-animal" element={<AddAnimal />} />
+              </Route>
             </Route>
             
             {/* Catch-all route */}
