@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Sidebar from './Sidebar';
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,13 @@ const Layout = ({ children }: LayoutProps) => {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold text-gray-800">Refuge des Animaux</h1>
+            <div className="flex items-center flex-1 justify-center">
+              <img 
+                src="/images/logo.png" 
+                alt="L'Arche de Ringo" 
+                className="h-16 w-auto"
+              />
+            </div>
           </div>
         </header>
         
