@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Plus, X, Calendar, Save } from 'lucide-react';
+import { Loader2, Plus, X, Calendar, Save, Edit, Trash } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface QuarantineRecord {
   id: number;
@@ -64,6 +75,23 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
     date: new Date().toISOString().split('T')[0],
     description: '',
     resultat_test: '',
+  });
+  const [isEditingQuarantine, setIsEditingQuarantine] = useState(false);
+  const [editQuarantineData, setEditQuarantineData] = useState({
+    id: 0,
+    raison: '',
+    date_debut: '',
+    date_fin: null as string | null,
+    observations: ''
+  });
+
+  // Add these to your component state
+  const [newQuarantineStartDate, setNewQuarantineStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newQuarantineEndDate, setNewQuarantineEndDate] = useState(() => {
+    // Default to one month later
+    const date = new Date();
+    date.setMonth(date.getMonth() + 1);
+    return date.toISOString().split('T')[0];
   });
 
   useEffect(() => {
@@ -140,7 +168,8 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
         .insert([
           {
             animal_id: animalId,
-            date_debut: new Date().toISOString(),
+            date_debut: newQuarantineStartDate,
+            date_fin: null, // Still set to null initially as quarantine is ongoing
             raison: newQuarantineReason,
           },
         ])
@@ -154,6 +183,11 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
       });
 
       setNewQuarantineReason('');
+      setNewQuarantineStartDate(new Date().toISOString().split('T')[0]);
+      const newEndDate = new Date();
+      newEndDate.setMonth(newEndDate.getMonth() + 1);
+      setNewQuarantineEndDate(newEndDate.toISOString().split('T')[0]);
+      
       fetchQuarantines();
     } catch (err) {
       console.error('Error starting quarantine:', err);
@@ -165,6 +199,13 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
     } finally {
       setIsStartingQuarantine(false);
     }
+  };
+
+  // Helper function to update end date when start date changes
+  const updateEndDateFromStart = (startDate: string) => {
+    const date = new Date(startDate);
+    date.setMonth(date.getMonth() + 1);
+    setNewQuarantineEndDate(date.toISOString().split('T')[0]);
   };
 
   const endQuarantine = async () => {
@@ -252,6 +293,93 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
     } finally {
       setIsAddingObservation(false);
     }
+  };
+
+  const editQuarantine = async () => {
+    try {
+      if (!editQuarantineData.raison.trim()) {
+        toast({
+          title: "Champ requis",
+          description: "Veuillez indiquer la raison de la quarantaine",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsEditingQuarantine(true);
+      
+      const { error } = await supabase
+        .from('quarantines')
+        .update({
+          raison: editQuarantineData.raison,
+          date_debut: editQuarantineData.date_debut,
+          date_fin: editQuarantineData.date_fin,
+          observations: editQuarantineData.observations,
+        })
+        .eq('id', editQuarantineData.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Quarantaine modifiée",
+        description: "Les informations de quarantaine ont été mises à jour",
+      });
+
+      fetchQuarantines();
+    } catch (err) {
+      console.error('Error editing quarantine:', err);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier la quarantaine",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEditingQuarantine(false);
+    }
+  };
+
+  const deleteQuarantine = async (id: number) => {
+    try {
+      // First delete related observations
+      const { error: obsError } = await supabase
+        .from('observations')
+        .delete()
+        .eq('quarantine_id', id);
+        
+      if (obsError) throw obsError;
+      
+      // Then delete the quarantine
+      const { error } = await supabase
+        .from('quarantines')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Quarantaine supprimée",
+        description: "La période de quarantaine a été supprimée",
+      });
+
+      fetchQuarantines();
+    } catch (err) {
+      console.error('Error deleting quarantine:', err);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la quarantaine",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const prepareEditQuarantine = (quarantine: QuarantineRecord) => {
+    setEditQuarantineData({
+      id: quarantine.id,
+      raison: quarantine.raison || '',
+      date_debut: quarantine.date_debut ? new Date(quarantine.date_debut).toISOString().split('T')[0] : '',
+      date_fin: quarantine.date_fin ? new Date(quarantine.date_fin).toISOString().split('T')[0] : null,
+      observations: quarantine.observations || ''
+    });
   };
 
   const formatDate = (dateString: string | null) => {
@@ -358,6 +486,34 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
                     required
                   />
                 </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">Date de début</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={newQuarantineStartDate}
+                    onChange={(e) => {
+                      setNewQuarantineStartDate(e.target.value);
+                      updateEndDateFromStart(e.target.value);
+                    }}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">Date de fin estimée</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={newQuarantineEndDate}
+                    onChange={(e) => setNewQuarantineEndDate(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Par défaut, la date de fin est fixée à un mois après la date de début.
+                    La quarantaine restera active jusqu'à ce qu'elle soit explicitement terminée.
+                  </p>
+                </div>
+                
                 <div className="flex justify-end space-x-2 pt-4">
                   <DialogClose asChild>
                     <Button variant="outline">
