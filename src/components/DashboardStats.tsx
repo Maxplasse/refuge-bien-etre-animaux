@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { animals } from './animalData';
@@ -18,7 +17,7 @@ const DashboardStats = () => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="hidden lg:grid lg:grid-cols-4 gap-4 mb-6">
       {stats.map((stat, index) => (
         <Card key={index} className="overflow-hidden">
           <div className={`h-1 ${stat.color}`}></div>
