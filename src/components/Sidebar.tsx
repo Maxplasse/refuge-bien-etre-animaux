@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -36,9 +35,13 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     >
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between p-4 border-b">
-          <h1 className={cn("font-semibold text-xl text-shelter-purple", !open && "lg:hidden")}>
-            Refuge
-          </h1>
+          <div className={cn("flex items-center flex-1 justify-center", !open && "lg:hidden")}>
+            <img 
+              src="/images/logo.png" 
+              alt="L'Arche de Ringo" 
+              className="h-16 w-auto"
+            />
+          </div>
           <Button 
             variant="ghost" 
             size="icon" 
