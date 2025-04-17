@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
 import { Database } from '@/types/supabase';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 
@@ -30,7 +31,10 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card 
+      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+      onClick={handleClick}
+    >
       {/* Image */}
       <div className="relative">
         <div className="aspect-square bg-gray-200">

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, Edit, Save, X } from 'lucide-react';
-import Layout from '@/components/Layout';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/components/ui/use-toast';
 import QuarantineManagement from '@/components/QuarantineManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Header from '@/components/Header';
+import { Navbar } from '@/components/Navbar';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 
@@ -140,31 +141,36 @@ const AnimalDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex justify-center items-center h-64">
+      <div className="min-h-screen bg-gray-50 lg:bg-white">
+        <Header className="hidden lg:flex" />
+        <div className="flex justify-center items-center h-64 mt-10">
           <Loader2 className="h-8 w-8 animate-spin text-shelter-purple" />
         </div>
-      </Layout>
+        <Navbar />
+      </div>
     );
   }
 
   if (error || !animal) {
     return (
-      <Layout>
-        <div className="flex flex-col items-center gap-4">
+      <div className="min-h-screen bg-gray-50 lg:bg-white">
+        <Header className="hidden lg:flex" />
+        <div className="flex flex-col items-center gap-4 mt-10">
           <p className="text-red-500">{error || "Animal non trouvé"}</p>
           <Button onClick={goBack} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Retour
           </Button>
         </div>
-      </Layout>
+        <Navbar />
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50 lg:bg-white">
+      <Header className="hidden lg:flex" />
+      <div className="px-4 lg:px-8 py-6 space-y-6 pb-24 lg:pb-6">
         <div className="flex justify-between items-center mb-4">
           <Button onClick={goBack} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -465,7 +471,8 @@ const AnimalDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+      <Navbar />
+    </div>
   );
 };
 
