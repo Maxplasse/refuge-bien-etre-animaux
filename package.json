@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:migrate:health": "supabase db push supabase/migrations/20240625_health_tables.sql"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

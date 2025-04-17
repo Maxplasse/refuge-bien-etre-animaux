@@ -117,6 +117,58 @@ export interface Database {
           created_at?: string
         }
       }
+      traitements: {
+        Row: {
+          id: number
+          animal_id: number
+          designation: string
+          date: string | null
+          ordonnance: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          animal_id: number
+          designation: string
+          date?: string | null
+          ordonnance?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          animal_id?: number
+          designation?: string
+          date?: string | null
+          ordonnance?: string | null
+          created_at?: string
+        }
+      }
+      vaccinations: {
+        Row: {
+          id: number
+          animal_id: number
+          designation: string
+          date: string | null
+          ordonnance: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          animal_id: number
+          designation: string
+          date?: string | null
+          ordonnance?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          animal_id?: number
+          designation?: string
+          date?: string | null
+          ordonnance?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
