@@ -37,7 +37,17 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
       {/* Image */}
       <div className="relative">
         <div className="aspect-square bg-gray-200">
-          {/* Image à implémenter */}
+          {animal.photo_url ? (
+            <img 
+              src={animal.photo_url} 
+              alt={animal.nom || 'Photo de l\'animal'} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              Pas de photo
+            </div>
+          )}
         </div>
       </div>
 

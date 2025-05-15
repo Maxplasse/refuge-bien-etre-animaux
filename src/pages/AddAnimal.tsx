@@ -8,6 +8,7 @@ import BasicInfoStep from '@/components/animal-form/BasicInfoStep';
 import CharacteristicsStep from '@/components/animal-form/CharacteristicsStep';
 import PersonalInfoStep from '@/components/animal-form/PersonalInfoStep';
 import AdditionalInfoStep from '@/components/animal-form/AdditionalInfoStep';
+import AmenantStep from '@/components/animal-form/AmenantStep';
 import ReviewStep from '@/components/animal-form/ReviewStep';
 import { Navbar } from '@/components/Navbar';
 
@@ -28,6 +29,7 @@ export interface AnimalFormData {
   sterilise: boolean;
   particularites: string;
   provenance: string;
+  amenant_id: number | null;
 }
 
 const initialFormData: AnimalFormData = {
@@ -46,6 +48,7 @@ const initialFormData: AnimalFormData = {
   sterilise: false,
   particularites: '',
   provenance: '',
+  amenant_id: null,
 };
 
 const steps = [
@@ -53,6 +56,7 @@ const steps = [
   { title: 'Caractéristiques', component: CharacteristicsStep },
   { title: 'Informations personnelles', component: PersonalInfoStep },
   { title: 'Informations supplémentaires', component: AdditionalInfoStep },
+  { title: 'Amenant', component: AmenantStep },
   { title: 'Vérification', component: ReviewStep },
 ];
 
@@ -167,7 +171,11 @@ const AddAnimal: React.FC = () => {
   };
 
   const prevStep = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
+    if (currentStep === 0) {
+      navigate(-1); // Retour au dashboard si on est à la première étape
+    } else {
+      setCurrentStep((prev) => Math.max(prev - 1, 0));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -233,6 +241,7 @@ const AddAnimal: React.FC = () => {
         particularites: formData.particularites || null,
         provenance: formData.provenance || null,
         photo_url: photoUrl,
+        amenant_id: formData.amenant_id || null,
       };
       
       console.log('Données à insérer dans la base de données:', animalData);
@@ -321,7 +330,7 @@ const AddAnimal: React.FC = () => {
               <StepComponent 
                 formData={formData} 
                 handleInputChange={handleInputChange}
-                handleFileChange={handleFileChange}
+                {...(StepComponent === BasicInfoStep ? { handleFileChange } : {})}
               />
 
               {/* Affichage des erreurs */}
@@ -337,7 +346,7 @@ const AddAnimal: React.FC = () => {
                   type="button"
                   variant="outline"
                   onClick={prevStep}
-                  disabled={currentStep === 0 || isSubmitting || isUploading}
+                  disabled={isSubmitting || isUploading}
                   className="flex items-center gap-2"
                 >
                   <ChevronLeft className="h-4 w-4" /> 

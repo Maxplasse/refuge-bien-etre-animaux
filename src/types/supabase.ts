@@ -26,6 +26,7 @@ export interface Database {
           date_entree: string | null
           amenant_id: number | null
           created_at: string
+          photo_url: string | null
         }
         Insert: {
           id?: number
@@ -43,6 +44,7 @@ export interface Database {
           date_entree?: string | null
           amenant_id?: number | null
           created_at?: string
+          photo_url?: string | null
         }
         Update: {
           id?: number
@@ -60,6 +62,7 @@ export interface Database {
           date_entree?: string | null
           amenant_id?: number | null
           created_at?: string
+          photo_url?: string | null
         }
       }
       quarantines: {

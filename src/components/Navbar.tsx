@@ -51,8 +51,8 @@ export const Navbar: React.FC<NavbarProps> = ({ className }) => {
         <NavbarItem
           icon={<Home className="w-6 h-6" />}
           label="Tableau de bord"
-          isActive={location.pathname === '/' || location.pathname === '/dashboard'}
-          onClick={() => navigate('/')}
+          isActive={location.pathname === '/dashboard'}
+          onClick={() => navigate('/dashboard')}
         />
         <NavbarItem
           icon={<Plus className="w-6 h-6" />}
