@@ -20,7 +20,7 @@ const Header: React.FC<HeaderProps> = ({ className }) => {
 
   return (
     <header className={`bg-white shadow-sm py-4 px-6 flex justify-between items-center ${className}`}>
-      <div className="flex items-center">
+      <div className="flex items-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/dashboard')}>
         <Logo className="h-10 w-auto mr-4" />
         <h1 className="text-xl font-semibold text-gray-800 hidden md:block">Refuge Bien-Être Animaux</h1>
       </div>

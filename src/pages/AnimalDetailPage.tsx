@@ -185,6 +185,17 @@ const AnimalDetailPage: React.FC = () => {
           <div className="w-full lg:w-2/5 lg:sticky lg:top-4 lg:self-start order-1 lg:order-1">
             <Card className="w-full h-full">
               <div className="h-64 sm:h-80 bg-gray-200 relative">
+                {animal.photo_url ? (
+                  <img 
+                    src={animal.photo_url} 
+                    alt={animal.nom || 'Photo de l\'animal'} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    Pas de photo
+                  </div>
+                )}
                 <div className="absolute bottom-2 right-2">
                   <Badge variant={animal.sterilise ? "default" : "secondary"}>
                     {animal.sterilise ? "Stérilisé" : "Non stérilisé"}
@@ -426,7 +437,7 @@ const AnimalDetailPage: React.FC = () => {
 
                       {animal.particularites && (
                         <div>
-                          <h3 className="text-lg font-semibold border-b pb-2 mt-6">Particularités</h3>
+                          <h3 className="text-lg font-semibold border-b pb-2 mt-6">Particularités : </h3>
                           <p className="mt-2">{animal.particularites}</p>
                         </div>
                       )}

@@ -1,8 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimalFormData } from '@/pages/AddAnimal';
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { supabase } from '@/lib/supabaseClient';
+import { Loader2 } from 'lucide-react';
+
+interface Amenant {
+  id: number;
+  nom_prenom: string;
+  telephone: string;
+  email: string;
+  entreprise: string;
+  adresse: string;
+}
 
 interface ReviewStepProps {
   formData: AnimalFormData;
@@ -11,6 +22,33 @@ interface ReviewStepProps {
 }
 
 const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
+  const [amenant, setAmenant] = useState<Amenant | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (formData.amenant_id) {
+      fetchAmenant();
+    }
+  }, [formData.amenant_id]);
+
+  const fetchAmenant = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('amenants')
+        .select('*')
+        .eq('id', formData.amenant_id)
+        .single();
+
+      if (error) throw error;
+      setAmenant(data);
+    } catch (err) {
+      console.error('Erreur lors de la récupération de l\'amenant:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fonction pour formater les dates
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Non spécifiée';
@@ -96,6 +134,36 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div>
+        <h3 className="text-lg font-medium">Amenant</h3>
+        <div className="mt-2">
+          {loading ? (
+            <div className="flex items-center gap-2 text-shelter-purple">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Chargement des informations de l'amenant...</span>
+            </div>
+          ) : amenant ? (
+            <div className="space-y-2">
+              <p><span className="font-medium">Nom et prénom:</span> {amenant.nom_prenom}</p>
+              {amenant.telephone && (
+                <p><span className="font-medium">Téléphone:</span> {amenant.telephone}</p>
+              )}
+              {amenant.email && (
+                <p><span className="font-medium">Email:</span> {amenant.email}</p>
+              )}
+              {amenant.entreprise && (
+                <p><span className="font-medium">Entreprise:</span> {amenant.entreprise}</p>
+              )}
+              {amenant.adresse && (
+                <p><span className="font-medium">Adresse:</span> {amenant.adresse}</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-gray-500">Aucun amenant sélectionné</p>
+          )}
+        </div>
       </div>
     </div>
   );
