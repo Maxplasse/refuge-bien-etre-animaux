@@ -5,21 +5,36 @@ import { Database } from '@/types/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Edit, Save, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Edit, Save, X, Camera, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import QuarantineManagement from '@/components/QuarantineManagement';
 import HealthManagement from '@/components/HealthManagement';
+import DeathManagement from '@/components/DeathManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';
 import { Navbar } from '@/components/Navbar';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
+
+interface Amenant {
+  id: number;
+  nom_prenom: string;
+  entreprise: string;
+  telephone: string;
+  email: string;
+  adresse: string;
+}
+
+// Nom du bucket pour les photos
+const PHOTOS_BUCKET = 'animalphoto';
 
 const AnimalDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +46,22 @@ const AnimalDetailPage: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Animal>>({});
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState("quarantine");
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  
+  // États pour la gestion des amenants
+  const [amenants, setAmenants] = useState<Amenant[]>([]);
+  const [loadingAmenants, setLoadingAmenants] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newAmenant, setNewAmenant] = useState({
+    nom_prenom: '',
+    entreprise: '',
+    telephone: '',
+    email: '',
+    adresse: '',
+  });
+  const [isSubmittingAmenant, setIsSubmittingAmenant] = useState(false);
+  const [selectedAmenant, setSelectedAmenant] = useState<Amenant | null>(null);
 
   useEffect(() => {
     const fetchAnimal = async () => {
@@ -48,6 +79,19 @@ const AnimalDetailPage: React.FC = () => {
         setAnimal(data);
         setFormData(data);
         setLoading(false);
+
+        // Si l'animal a un amenant_id, on charge ses informations
+        if (data.amenant_id) {
+          const { data: amenantData, error: amenantError } = await supabase
+            .from('amenants')
+            .select('*')
+            .eq('id', data.amenant_id)
+            .single();
+
+          if (!amenantError && amenantData) {
+            setSelectedAmenant(amenantData);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Une erreur est survenue');
         setLoading(false);
@@ -55,7 +99,92 @@ const AnimalDetailPage: React.FC = () => {
     };
 
     fetchAnimal();
+    fetchAmenants();
   }, [id]);
+
+  const fetchAmenants = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('amenants')
+        .select('*')
+        .order('nom_prenom');
+
+      if (error) throw error;
+      setAmenants(data || []);
+    } catch (err) {
+      console.error('Erreur lors de la récupération des amenants:', err);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger la liste des amenants",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingAmenants(false);
+    }
+  };
+
+  const handleNewAmenantSubmit = async () => {
+    setIsSubmittingAmenant(true);
+    
+    try {
+      if (!newAmenant.nom_prenom.trim()) {
+        throw new Error('Le nom et prénom sont obligatoires');
+      }
+
+      const { data, error } = await supabase
+        .from('amenants')
+        .insert([{
+          nom_prenom: newAmenant.nom_prenom.trim(),
+          telephone: newAmenant.telephone.trim() || null,
+          email: newAmenant.email.trim() || null,
+          entreprise: newAmenant.entreprise.trim() || null,
+          adresse: newAmenant.adresse.trim() || null,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Mettre à jour la liste des amenants
+      setAmenants([...amenants, data]);
+      
+      // Mettre à jour l'amenant de l'animal
+      const { error: updateError } = await supabase
+        .from('animaux')
+        .update({ amenant_id: data.id })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Mettre à jour l'état local
+      setSelectedAmenant(data);
+      setAnimal(prev => prev ? { ...prev, amenant_id: data.id } : null);
+      setFormData(prev => ({ ...prev, amenant_id: data.id }));
+      
+      setIsDialogOpen(false);
+      setNewAmenant({ nom_prenom: '', telephone: '', email: '', entreprise: '', adresse: '' });
+      
+      toast({
+        title: "Succès",
+        description: "L'amenant a été créé et associé à l'animal"
+      });
+    } catch (err) {
+      console.error('Erreur lors de la création de l\'amenant:', err);
+      toast({
+        title: "Erreur",
+        description: err instanceof Error ? err.message : "Erreur lors de la création de l'amenant",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingAmenant(false);
+    }
+  };
+
+  const handleAmenantChange = (amenantId: string) => {
+    const selectedAmenantData = amenants.find(a => a.id === parseInt(amenantId));
+    setSelectedAmenant(selectedAmenantData || null);
+    setFormData(prev => ({ ...prev, amenant_id: parseInt(amenantId) }));
+  };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Non spécifiée";
@@ -97,6 +226,74 @@ const AnimalDetailPage: React.FC = () => {
       ...formData,
       [name]: value
     });
+  };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      // Upload photo
+      setIsUploadingPhoto(true);
+      try {
+        // Generate unique filename
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        
+        // Upload to Supabase storage
+        const { data: uploadData, error: uploadError } = await supabase
+          .storage
+          .from(PHOTOS_BUCKET)
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: file.type
+          });
+        
+        if (uploadError) throw uploadError;
+        
+        // Get public URL
+        const { data: publicUrlData } = await supabase
+          .storage
+          .from(PHOTOS_BUCKET)
+          .getPublicUrl(fileName);
+        
+        const photoUrl = publicUrlData.publicUrl;
+        
+        // Update animal record with new photo URL
+        const { error: updateError } = await supabase
+          .from('animaux')
+          .update({ photo_url: photoUrl })
+          .eq('id', id);
+        
+        if (updateError) throw updateError;
+        
+        // Update local state
+        setAnimal(prev => prev ? { ...prev, photo_url: photoUrl } : null);
+        setFormData(prev => ({ ...prev, photo_url: photoUrl }));
+        
+        toast({
+          title: "Photo mise à jour",
+          description: "La photo de l'animal a été mise à jour avec succès."
+        });
+      } catch (err) {
+        console.error('Erreur lors de la mise à jour de la photo:', err);
+        toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour la photo de l'animal.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsUploadingPhoto(false);
+        setPhotoPreview(null);
+      }
+    }
   };
 
   const toggleEdit = () => {
@@ -185,7 +382,13 @@ const AnimalDetailPage: React.FC = () => {
           <div className="w-full lg:w-2/5 lg:sticky lg:top-4 lg:self-start order-1 lg:order-1">
             <Card className="w-full h-full">
               <div className="h-64 sm:h-80 bg-gray-200 relative">
-                {animal.photo_url ? (
+                {photoPreview ? (
+                  <img 
+                    src={photoPreview} 
+                    alt="Prévisualisation" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : animal.photo_url ? (
                   <img 
                     src={animal.photo_url} 
                     alt={animal.nom || 'Photo de l\'animal'} 
@@ -196,10 +399,37 @@ const AnimalDetailPage: React.FC = () => {
                     Pas de photo
                   </div>
                 )}
-                <div className="absolute bottom-2 right-2">
+                <div className="absolute bottom-2 right-2 flex gap-2">
                   <Badge variant={animal.sterilise ? "default" : "secondary"}>
                     {animal.sterilise ? "Stérilisé" : "Non stérilisé"}
                   </Badge>
+                </div>
+                <div className="absolute top-2 right-2">
+                  <div className="relative">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                      id="photo-upload"
+                      disabled={isUploadingPhoto}
+                    />
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="rounded-full bg-white/80 hover:bg-white"
+                      asChild
+                      disabled={isUploadingPhoto}
+                    >
+                      <label htmlFor="photo-upload" className="cursor-pointer">
+                        {isUploadingPhoto ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Camera className="h-4 w-4" />
+                        )}
+                      </label>
+                    </Button>
+                  </div>
                 </div>
               </div>
               <CardContent className="p-6">
@@ -367,6 +597,30 @@ const AnimalDetailPage: React.FC = () => {
                       </div>
 
                       <div className="sm:col-span-2">
+                        <Label htmlFor="amenant">Amenant</Label>
+                        <Select 
+                          value={formData.amenant_id?.toString() || ''} 
+                          onValueChange={handleAmenantChange}
+                        >
+                          <SelectTrigger id="amenant">
+                            <SelectValue placeholder="Sélectionner un amenant" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {amenants.map((amenant) => (
+                                <SelectItem
+                                  key={amenant.id}
+                                  value={amenant.id.toString()}
+                                >
+                                  {amenant.nom_prenom} {amenant.entreprise ? `(${amenant.entreprise})` : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="sm:col-span-2">
                         <Label htmlFor="particularites">Particularités</Label>
                         <Textarea 
                           id="particularites"
@@ -433,11 +687,35 @@ const AnimalDetailPage: React.FC = () => {
                           <h4 className="text-sm text-gray-500">Identification</h4>
                           <p>{animal.identification || "Non spécifiée"}</p>
                         </div>
+
+                        <div className="sm:col-span-2">
+                          <h4 className="text-sm text-gray-500">Amenant</h4>
+                          {selectedAmenant ? (
+                            <div className="mt-1">
+                              <p className="font-medium">{selectedAmenant.nom_prenom}</p>
+                              {selectedAmenant.entreprise && (
+                                <p className="text-sm text-gray-600">{selectedAmenant.entreprise}</p>
+                              )}
+                              {(selectedAmenant.telephone || selectedAmenant.email) && (
+                                <p className="text-sm text-gray-600">
+                                  {selectedAmenant.telephone}
+                                  {selectedAmenant.telephone && selectedAmenant.email && " • "}
+                                  {selectedAmenant.email}
+                                </p>
+                              )}
+                              {selectedAmenant.adresse && (
+                                <p className="text-sm text-gray-600">{selectedAmenant.adresse}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <p>Non spécifié</p>
+                          )}
+                        </div>
                       </div>
 
                       {animal.particularites && (
                         <div>
-                          <h3 className="text-lg font-semibold border-b pb-2 mt-6">Particularités : </h3>
+                          <h3 className="text-lg font-semibold border-b pb-2 mt-6">Particularités</h3>
                           <p className="mt-2">{animal.particularites}</p>
                         </div>
                       )}
@@ -472,9 +750,10 @@ const AnimalDetailPage: React.FC = () => {
                   onValueChange={setActiveTab}
                   className="w-full"
                 >
-                  <TabsList className="w-full grid grid-cols-2 mb-6">
+                  <TabsList className="w-full grid grid-cols-3 mb-6">
                     <TabsTrigger value="quarantine">Quarantaine</TabsTrigger>
                     <TabsTrigger value="health">Santé</TabsTrigger>
+                    <TabsTrigger value="death">État</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="quarantine">
@@ -486,6 +765,12 @@ const AnimalDetailPage: React.FC = () => {
                   <TabsContent value="health">
                     {animal && animal.id && (
                       <HealthManagement animalId={animal.id} />
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="death">
+                    {animal && animal.id && (
+                      <DeathManagement animalId={animal.id} />
                     )}
                   </TabsContent>
                 </Tabs>

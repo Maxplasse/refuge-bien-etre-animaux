@@ -71,10 +71,13 @@ const AdminPortal: React.FC = () => {
   const [accessLevel, setAccessLevel] = useState('viewer');
   const [isSending, setIsSending] = useState(false);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [password, setPassword] = useState('');
   const [lastName, setLastName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Vérifier si l'utilisateur est admin
   useEffect(() => {
@@ -299,6 +302,66 @@ const AdminPortal: React.FC = () => {
     }
   };
 
+  const handleEditUser = async () => {
+    if (!selectedUser) return;
+
+    setIsEditing(true);
+    try {
+      const { error } = await supabase
+        .from('user')
+        .update({
+          last_name: lastName,
+          first_name: firstName,
+          phone_number: phoneNumber,
+          role: inviteRole,
+          access: accessLevel,
+        })
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      // Mettre à jour l'interface utilisateur
+      setUsers(users.map(u => 
+        u.id === selectedUser.id 
+          ? { 
+              ...u, 
+              last_name: lastName,
+              first_name: firstName,
+              phone_number: phoneNumber,
+              role: inviteRole,
+              access: accessLevel,
+            } 
+          : u
+      ));
+
+      toast({
+        title: "Utilisateur modifié",
+        description: "Les informations de l'utilisateur ont été mises à jour avec succès.",
+      });
+
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error('Erreur lors de la modification de l\'utilisateur:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier les informations de l'utilisateur.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const openEditDialog = (user: User) => {
+    setSelectedUser(user);
+    setLastName(user.last_name || '');
+    setFirstName(user.first_name || '');
+    setPhoneNumber(user.phone_number || '');
+    setInviteRole(user.role);
+    setAccessLevel(user.access);
+    setIsEditDialogOpen(true);
+  };
+
   // Rendu du composant de gestion des utilisateurs
   const renderUserManagement = () => (
     <Card className="w-full">
@@ -421,111 +484,173 @@ const AdminPortal: React.FC = () => {
             <Loader2 className="h-8 w-8 animate-spin text-shelter-purple" />
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Rôle professionnel</TableHead>
-                <TableHead>Droit d'accès</TableHead>
-                <TableHead>Date de création</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.length === 0 ? (
+          <>
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Modifier l'utilisateur</DialogTitle>
+                  <DialogDescription>
+                    Modifiez les informations de l'utilisateur.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Rôle professionnel *</Label>
+                    <Select value={inviteRole} onValueChange={setInviteRole}>
+                      <SelectTrigger id="role">
+                        <SelectValue placeholder="Sélectionner un rôle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Vétérinaire</SelectItem>
+                        <SelectItem value="modifier">Soigneur</SelectItem>
+                        <SelectItem value="viewer">Bénévole</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="access">Droit d'accès *</Label>
+                    <Select value={accessLevel} onValueChange={setAccessLevel}>
+                      <SelectTrigger id="access">
+                        <SelectValue placeholder="Sélectionner un niveau d'accès" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrateur</SelectItem>
+                        <SelectItem value="modifier">Modificateur</SelectItem>
+                        <SelectItem value="viewer">Lecteur</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Nom</Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Nom de famille"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Prénom</Label>
+                    <Input
+                      id="firstName"
+                      placeholder="Prénom"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Téléphone</Label>
+                    <Input
+                      id="phoneNumber"
+                      placeholder="Numéro de téléphone"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={handleEditUser} disabled={isEditing}>
+                    {isEditing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Modification en cours...
+                      </>
+                    ) : (
+                      'Enregistrer les modifications'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-gray-500">
-                    Aucun utilisateur trouvé
-                  </TableCell>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Rôle professionnel</TableHead>
+                  <TableHead>Droit d'accès</TableHead>
+                  <TableHead>Date de création</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      {user.first_name || ''} {user.last_name || ''}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {user.role === 'admin' ? (
-                          <ShieldAlert className="h-4 w-4 text-red-500" />
-                        ) : user.role === 'modifier' ? (
-                          <Edit className="h-4 w-4 text-orange-500" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-blue-500" />
-                        )}
-                        <span className="capitalize">
-                          {user.role === 'admin' ? 'Vétérinaire' : 
-                           user.role === 'modifier' ? 'Soigneur' : 
-                           'Bénévole'}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {user.access === 'admin' ? (
-                          <ShieldAlert className="h-4 w-4 text-red-500" />
-                        ) : user.access === 'modifier' ? (
-                          <Edit className="h-4 w-4 text-orange-500" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-blue-500" />
-                        )}
-                        <span className="capitalize">
-                          {user.access === 'admin' ? 'Administrateur' : 
-                           user.access === 'modifier' ? 'Modificateur' : 
-                           'Lecteur'}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(user.created_at).toLocaleDateString('fr-FR')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => updateUserRole(user.id, 'admin', 'role')}>
-                            <ShieldAlert className="mr-2 h-4 w-4" />
-                            Définir comme Vétérinaire
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateUserRole(user.id, 'modifier', 'role')}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Définir comme Soigneur
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateUserRole(user.id, 'viewer', 'role')}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Définir comme Bénévole
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateUserRole(user.id, 'admin', 'access')}>
-                            <ShieldAlert className="mr-2 h-4 w-4" />
-                            Définir comme Administrateur
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateUserRole(user.id, 'modifier', 'access')}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Définir comme Modificateur
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateUserRole(user.id, 'viewer', 'access')}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Définir comme Lecteur
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => deleteUser(user.id)}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              </TableHeader>
+              <TableBody>
+                {users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-10 text-gray-500">
+                      Aucun utilisateur trouvé
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        {user.first_name || ''} {user.last_name || ''}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {user.role === 'admin' ? (
+                            <ShieldAlert className="h-4 w-4 text-red-500" />
+                          ) : user.role === 'modifier' ? (
+                            <Edit className="h-4 w-4 text-orange-500" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-blue-500" />
+                          )}
+                          <span className="capitalize">
+                            {user.role === 'admin' ? 'Vétérinaire' : 
+                             user.role === 'modifier' ? 'Soigneur' : 
+                             'Bénévole'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {user.access === 'admin' ? (
+                            <ShieldAlert className="h-4 w-4 text-red-500" />
+                          ) : user.access === 'modifier' ? (
+                            <Edit className="h-4 w-4 text-orange-500" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-blue-500" />
+                          )}
+                          <span className="capitalize">
+                            {user.access === 'admin' ? 'Administrateur' : 
+                             user.access === 'modifier' ? 'Modificateur' : 
+                             'Lecteur'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(user.created_at).toLocaleDateString('fr-FR')}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Modifier les informations
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => deleteUser(user.id)}
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </>
         )}
       </CardContent>
     </Card>

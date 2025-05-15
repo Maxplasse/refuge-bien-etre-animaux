@@ -94,6 +94,11 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
     return date.toISOString().split('T')[0];
   });
 
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEndQuarantineDialogOpen, setIsEndQuarantineDialogOpen] = useState(false);
+  const [isStartQuarantineDialogOpen, setIsStartQuarantineDialogOpen] = useState(false);
+  const [isObservationDialogOpen, setIsObservationDialogOpen] = useState(false);
+
   useEffect(() => {
     fetchQuarantines();
   }, [animalId]);
@@ -187,6 +192,7 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
       const newEndDate = new Date();
       newEndDate.setMonth(newEndDate.getMonth() + 1);
       setNewQuarantineEndDate(newEndDate.toISOString().split('T')[0]);
+      setIsStartQuarantineDialogOpen(false);
       
       fetchQuarantines();
     } catch (err) {
@@ -230,6 +236,7 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
       });
 
       setEndQuarantineNotes('');
+      setIsEndQuarantineDialogOpen(false);
       fetchQuarantines();
     } catch (err) {
       console.error('Error ending quarantine:', err);
@@ -283,6 +290,7 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
       });
       
       fetchObservations(selectedQuarantineId);
+      setIsObservationDialogOpen(false);
     } catch (err) {
       console.error('Error adding observation:', err);
       toast({
@@ -406,7 +414,7 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
         <h3 className="text-xl font-semibold">Gestion de la quarantaine</h3>
         
         {activeQuarantine ? (
-          <Dialog>
+          <Dialog open={isEndQuarantineDialogOpen} onOpenChange={setIsEndQuarantineDialogOpen}>
             <DialogTrigger asChild>
               <Button 
                 variant="outline" 
@@ -461,10 +469,10 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
             </DialogContent>
           </Dialog>
         ) : (
-          <Dialog>
+          <Dialog open={isStartQuarantineDialogOpen} onOpenChange={setIsStartQuarantineDialogOpen}>
             <DialogTrigger asChild>
               <Button 
-                variant="default" 
+                variant="outline" 
                 className="bg-amber-500 hover:bg-amber-600 text-white"
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -580,12 +588,15 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
                 <div className="pt-2">
                   <div className="flex justify-between items-center mb-2">
                     <h4 className="font-medium">Suivi et observations</h4>
-                    <Dialog>
+                    <Dialog open={isObservationDialogOpen} onOpenChange={setIsObservationDialogOpen}>
                       <DialogTrigger asChild>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => setSelectedQuarantineId(quarantine.id)}
+                          onClick={() => {
+                            setSelectedQuarantineId(quarantine.id);
+                            setIsObservationDialogOpen(true);
+                          }}
                         >
                           <Plus className="mr-2 h-3 w-3" />
                           Ajouter
@@ -634,12 +645,13 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
                             />
                           </div>
                           <div className="flex justify-end space-x-2 pt-4">
-                            <DialogClose asChild>
-                              <Button variant="outline">
-                                <X className="mr-2 h-4 w-4" />
-                                Annuler
-                              </Button>
-                            </DialogClose>
+                            <Button 
+                              variant="outline"
+                              onClick={() => setIsObservationDialogOpen(false)}
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              Annuler
+                            </Button>
                             <Button 
                               onClick={addObservation} 
                               disabled={isAddingObservation}
