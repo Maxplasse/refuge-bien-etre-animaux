@@ -32,13 +32,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, MoreVertical, PlusCircle, Trash, UserPlus, ShieldAlert, Edit, Eye } from 'lucide-react';
+import { Loader2, MoreVertical, PlusCircle, Trash, UserPlus, ShieldAlert, Edit, Eye, FileDown, Cat, User, Download } from 'lucide-react';
 import Header from '@/components/Header';
+import { Database } from '@/types/supabase';
+import * as XLSX from 'xlsx';
 
 interface User {
   id: string;
@@ -61,10 +64,29 @@ interface NewUser {
   phone_number?: string;
 }
 
+// Interface pour les animaux
+interface Animal {
+  id: number;
+  nom: string;
+  espece: string;
+  sexe: string | null;
+  race: string | null;
+  date_naissance: string | null;
+  date_entree: string | null;
+  sterilise: boolean;
+  photo_url: string | null;
+  created_at: string;
+  isInQuarantine?: boolean;
+  isDeceased?: boolean;
+}
+
 const AdminPortal: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("users");
   const [users, setUsers] = useState<User[]>([]);
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [loadingAnimals, setLoadingAnimals] = useState(true);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
@@ -137,6 +159,63 @@ const AdminPortal: React.FC = () => {
 
     loadUsers();
   }, []);
+
+  // Charger la liste des animaux
+  useEffect(() => {
+    const loadAnimals = async () => {
+      if (activeTab !== "animals") return;
+      
+      setLoadingAnimals(true);
+      try {
+        // Fetch animals
+        const { data: animalsData, error: animalsError } = await supabase
+          .from('animaux')
+          .select('*');
+
+        if (animalsError) throw animalsError;
+
+        // Fetch active quarantines
+        const { data: quarantineData, error: quarantineError } = await supabase
+          .from('quarantines')
+          .select('*')
+          .or('date_fin.is.null,date_fin.gt.now()');
+
+        if (quarantineError) throw quarantineError;
+
+        // Fetch deceased animals
+        const { data: deceasedData, error: deceasedError } = await supabase
+          .from('deces')
+          .select('*');
+
+        if (deceasedError) throw deceasedError;
+
+        // Combine animal and status data
+        const animalsWithStatus = animalsData.map(animal => {
+          const activeQuarantine = quarantineData.find(q => q.animal_id === animal.id);
+          const deathRecord = deceasedData.find(d => d.animal_id === animal.id);
+          
+          return {
+            ...animal,
+            isInQuarantine: !!activeQuarantine,
+            isDeceased: !!deathRecord,
+          };
+        });
+
+        setAnimals(animalsWithStatus);
+      } catch (error) {
+        console.error('Erreur lors du chargement des animaux:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger la liste des animaux.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingAnimals(false);
+      }
+    };
+
+    loadAnimals();
+  }, [activeTab]);
 
   // Fonction pour envoyer une invitation
   const sendInvite = async () => {
@@ -360,6 +439,48 @@ const AdminPortal: React.FC = () => {
     setInviteRole(user.role);
     setAccessLevel(user.access);
     setIsEditDialogOpen(true);
+  };
+
+  // Fonction pour exporter les animaux au format Excel
+  const exportToExcel = () => {
+    try {
+      // Créer un tableau pour l'export avec les données formatées
+      const exportData = animals.map(animal => ({
+        'ID': animal.id,
+        'Nom': animal.nom,
+        'Espèce': animal.espece,
+        'Race': animal.race || 'Non spécifiée',
+        'Sexe': animal.sexe === 'M' ? 'Mâle' : animal.sexe === 'F' ? 'Femelle' : 'Non spécifié',
+        'Date de naissance': animal.date_naissance ? new Date(animal.date_naissance).toLocaleDateString('fr-FR') : 'Non spécifiée',
+        'Date d\'entrée': animal.date_entree ? new Date(animal.date_entree).toLocaleDateString('fr-FR') : 'Non spécifiée',
+        'Stérilisé': animal.sterilise ? 'Oui' : 'Non',
+        'En quarantaine': animal.isInQuarantine ? 'Oui' : 'Non',
+        'Décédé': animal.isDeceased ? 'Oui' : 'Non',
+      }));
+
+      // Créer un workbook et ajouter une feuille
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+      // Ajouter la feuille au workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Animaux');
+
+      // Générer un fichier Excel et le télécharger
+      const date = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `liste-animaux-${date}.xlsx`);
+
+      toast({
+        title: "Export réussi",
+        description: "La liste des animaux a été exportée avec succès.",
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'export Excel:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'exporter les données au format Excel.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Rendu du composant de gestion des utilisateurs
@@ -656,6 +777,111 @@ const AdminPortal: React.FC = () => {
     </Card>
   );
 
+  // Rendu du composant de gestion des animaux
+  const renderAnimalManagement = () => (
+    <Card className="w-full">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Gestion des animaux</CardTitle>
+          <CardDescription>Gérer les informations des animaux du refuge</CardDescription>
+        </div>
+        <Button className="flex items-center gap-2" onClick={exportToExcel}>
+          <Download className="h-4 w-4" />
+          <span>Exporter en Excel</span>
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {loadingAnimals ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-shelter-purple" />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Photo</TableHead>
+                <TableHead>Nom</TableHead>
+                <TableHead>Espèce</TableHead>
+                <TableHead>Sexe</TableHead>
+                <TableHead>Stérilisé</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Date d'entrée</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {animals.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-10 text-gray-500">
+                    Aucun animal trouvé
+                  </TableCell>
+                </TableRow>
+              ) : (
+                animals.map((animal) => (
+                  <TableRow key={animal.id}>
+                    <TableCell>{animal.id}</TableCell>
+                    <TableCell>
+                      <div className="h-10 w-10 rounded-full overflow-hidden bg-gray-100">
+                        {animal.photo_url ? (
+                          <img 
+                            src={animal.photo_url} 
+                            alt={animal.nom || 'Photo de l\'animal'} 
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center">
+                            <Cat className="h-5 w-5 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{animal.nom}</TableCell>
+                    <TableCell>{animal.espece}</TableCell>
+                    <TableCell>{animal.sexe === 'M' ? 'Mâle' : animal.sexe === 'F' ? 'Femelle' : '-'}</TableCell>
+                    <TableCell>{animal.sterilise ? 'Oui' : 'Non'}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {animal.isInQuarantine && (
+                          <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-red-100 text-red-800">
+                            Quarantaine
+                          </span>
+                        )}
+                        {animal.isDeceased && (
+                          <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800">
+                            Décédé
+                          </span>
+                        )}
+                        {!animal.isInQuarantine && !animal.isDeceased && (
+                          <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
+                            Normal
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {animal.date_entree ? new Date(animal.date_entree).toLocaleDateString('fr-FR') : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => navigate(`/animal/${animal.id}`)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Voir
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
@@ -664,7 +890,31 @@ const AdminPortal: React.FC = () => {
           <h1 className="text-3xl font-bold">Portail d'administration</h1>
         </div>
 
-        {renderUserManagement()}
+        <Tabs 
+          defaultValue="users" 
+          value={activeTab} 
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Utilisateurs
+            </TabsTrigger>
+            <TabsTrigger value="animals" className="flex items-center gap-2">
+              <Cat className="h-4 w-4" />
+              Animaux
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="users">
+            {renderUserManagement()}
+          </TabsContent>
+          
+          <TabsContent value="animals">
+            {renderAnimalManagement()}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

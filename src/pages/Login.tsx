@@ -5,6 +5,12 @@ import { supabase } from '@/lib/supabaseClient';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { toast } from '@/components/ui/use-toast';
+import { User } from '@supabase/supabase-js';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { LockIcon, MailIcon } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -23,6 +29,36 @@ const Login = () => {
     }
   }, [location]);
 
+  const fetchRecentObservations = async (user: User) => {
+    try {
+      // Fetch recent quarantine observations
+      const { data, error } = await supabase
+        .from('observations')
+        .select(`
+          id, 
+          date, 
+          description,
+          quarantine_id,
+          quarantines(animal_id)
+        `)
+        .order('date', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+
+      // If there are recent observations, show a toast notification
+      if (data && data.length > 0) {
+        toast({
+          title: "Nouvelles observations",
+          description: `${data.length} nouvelles observations depuis votre dernière connexion.`,
+          variant: "default",
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -36,6 +72,11 @@ const Login = () => {
       });
 
       if (error) throw error;
+
+      // Fetch notifications after successful login
+      if (data.user) {
+        await fetchRecentObservations(data.user);
+      }
 
       // Rediriger vers le tableau de bord après connexion réussie
       navigate('/dashboard');

@@ -21,6 +21,7 @@ import { Navbar } from '@/components/Navbar';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 
@@ -39,9 +40,11 @@ const PHOTOS_BUCKET = 'animalphoto';
 const AnimalDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isSmallScreen = useMediaQuery('(max-width: 640px)');
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [amenantError, setAmenantError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [formData, setFormData] = useState<Partial<Animal>>({});
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -149,17 +152,8 @@ const AnimalDetailPage: React.FC = () => {
       setAmenants([...amenants, data]);
       
       // Mettre à jour l'amenant de l'animal
-      const { error: updateError } = await supabase
-        .from('animaux')
-        .update({ amenant_id: data.id })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
-
-      // Mettre à jour l'état local
-      setSelectedAmenant(data);
-      setAnimal(prev => prev ? { ...prev, amenant_id: data.id } : null);
       setFormData(prev => ({ ...prev, amenant_id: data.id }));
+      setSelectedAmenant(data);
       
       setIsDialogOpen(false);
       setNewAmenant({ nom_prenom: '', telephone: '', email: '', entreprise: '', adresse: '' });
@@ -170,6 +164,7 @@ const AnimalDetailPage: React.FC = () => {
       });
     } catch (err) {
       console.error('Erreur lors de la création de l\'amenant:', err);
+      setAmenantError(err instanceof Error ? err.message : "Erreur lors de la création de l'amenant");
       toast({
         title: "Erreur",
         description: err instanceof Error ? err.message : "Erreur lors de la création de l'amenant",
@@ -336,6 +331,14 @@ const AnimalDetailPage: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Function to handle opening the dialog and reset error
+  const handleOpenDialog = (open: boolean) => {
+    if (open) {
+      setAmenantError(null);
+    }
+    setIsDialogOpen(open);
   };
 
   if (loading) {
@@ -598,26 +601,119 @@ const AnimalDetailPage: React.FC = () => {
 
                       <div className="sm:col-span-2">
                         <Label htmlFor="amenant">Amenant</Label>
-                        <Select 
-                          value={formData.amenant_id?.toString() || ''} 
-                          onValueChange={handleAmenantChange}
-                        >
-                          <SelectTrigger id="amenant">
-                            <SelectValue placeholder="Sélectionner un amenant" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {amenants.map((amenant) => (
-                                <SelectItem
-                                  key={amenant.id}
-                                  value={amenant.id.toString()}
+                        <div className={cn(
+                          "flex gap-2", 
+                          isSmallScreen ? "flex-col" : "items-center"
+                        )}>
+                          <div className="flex-grow">
+                            <Select 
+                              value={formData.amenant_id?.toString() || ''} 
+                              onValueChange={handleAmenantChange}
+                            >
+                              <SelectTrigger id="amenant">
+                                <SelectValue placeholder="Sélectionner un amenant" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {amenants.map((amenant) => (
+                                    <SelectItem
+                                      key={amenant.id}
+                                      value={amenant.id.toString()}
+                                    >
+                                      {amenant.nom_prenom} {amenant.entreprise ? `(${amenant.entreprise})` : ''}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Dialog open={isDialogOpen} onOpenChange={handleOpenDialog}>
+                            <DialogTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                  "flex items-center gap-2 whitespace-nowrap",
+                                  isSmallScreen && "w-full justify-center mt-2"
+                                )}
+                              >
+                                <Plus className="h-4 w-4" />
+                                Nouvel amenant
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Ajouter un nouvel amenant</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                {amenantError && (
+                                  <Alert variant="destructive">
+                                    <AlertDescription>{amenantError}</AlertDescription>
+                                  </Alert>
+                                )}
+                                <div className="space-y-2">
+                                  <Label htmlFor="nom_prenom">Nom et prénom*</Label>
+                                  <Input
+                                    id="nom_prenom"
+                                    value={newAmenant.nom_prenom}
+                                    onChange={(e) => setNewAmenant({ ...newAmenant, nom_prenom: e.target.value })}
+                                    required
+                                    placeholder="ex: Dupont Jean"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="entreprise">Entreprise</Label>
+                                  <Input
+                                    id="entreprise"
+                                    value={newAmenant.entreprise}
+                                    onChange={(e) => setNewAmenant({ ...newAmenant, entreprise: e.target.value })}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="telephone">Téléphone</Label>
+                                  <Input
+                                    id="telephone"
+                                    value={newAmenant.telephone}
+                                    onChange={(e) => setNewAmenant({ ...newAmenant, telephone: e.target.value })}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="email">Email</Label>
+                                  <Input
+                                    id="email"
+                                    type="email"
+                                    value={newAmenant.email}
+                                    onChange={(e) => setNewAmenant({ ...newAmenant, email: e.target.value })}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="adresse">Adresse</Label>
+                                  <Input
+                                    id="adresse"
+                                    value={newAmenant.adresse}
+                                    onChange={(e) => setNewAmenant({ ...newAmenant, adresse: e.target.value })}
+                                  />
+                                </div>
+                                <Button
+                                  type="button"
+                                  className="w-full mt-4"
+                                  onClick={handleNewAmenantSubmit}
+                                  disabled={isSubmittingAmenant || !newAmenant.nom_prenom.trim()}
                                 >
-                                  {amenant.nom_prenom} {amenant.entreprise ? `(${amenant.entreprise})` : ''}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
+                                  {isSubmittingAmenant ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Création en cours...
+                                    </>
+                                  ) : (
+                                    'Créer l\'amenant'
+                                  )}
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                       </div>
 
                       <div className="sm:col-span-2">

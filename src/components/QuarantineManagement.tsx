@@ -278,6 +278,21 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
 
       if (error) throw error;
 
+      // Update the last observation time in the system settings
+      // This will be used to notify other users about new observations
+      const { error: updateError } = await supabase
+        .from('system_settings')
+        .upsert([
+          {
+            key: 'lastObservationTime',
+            value: new Date().toISOString(),
+          },
+        ]);
+
+      if (updateError) {
+        console.error('Error updating lastObservationTime:', updateError);
+      }
+
       toast({
         title: "Observation ajoutée",
         description: "L'observation a été enregistrée avec succès",

@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 
 interface TraitementRecord {
   id: number;
@@ -45,6 +46,7 @@ interface TraitementRecord {
   ordonnance_file_path: string | null;
   ordonnance_file_name: string | null;
   created_at: string;
+  observation: string | null;
 }
 
 interface VaccinationRecord {
@@ -56,6 +58,7 @@ interface VaccinationRecord {
   ordonnance_file_path: string | null;
   ordonnance_file_name: string | null;
   created_at: string;
+  observation: string | null;
 }
 
 interface HealthManagementProps {
@@ -73,12 +76,14 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     designation: '',
     date: new Date().toISOString().split('T')[0],
     ordonnance: '',
+    observation: '',
   });
   
   const [newVaccination, setNewVaccination] = useState({
     designation: '',
     date: new Date().toISOString().split('T')[0],
     ordonnance: '',
+    observation: '',
   });
 
   // File states
@@ -94,6 +99,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     designation: '',
     date: '',
     ordonnance: '',
+    observation: '',
   });
   
   const [isEditingVaccination, setIsEditingVaccination] = useState(false);
@@ -102,6 +108,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     designation: '',
     date: '',
     ordonnance: '',
+    observation: '',
   });
 
   // Edit file states
@@ -194,39 +201,44 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
             description: "Impossible d'uploader le fichier d'ordonnance",
             variant: "destructive",
           });
-          // Continue without the file
+          // Continue without file
         }
       }
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('traitements')
         .insert([
-          {
+          { 
             animal_id: animalId,
-            designation: newTraitement.designation,
-            date: newTraitement.date,
-            ordonnance: newTraitement.ordonnance,
+            designation: newTraitement.designation.trim(),
+            date: new Date(newTraitement.date),
+            ordonnance: newTraitement.ordonnance.trim() || null,
             ordonnance_file_path: filePath,
             ordonnance_file_name: fileName,
-          },
-        ])
-        .select();
+            observation: newTraitement.observation.trim() || null,
+          }
+        ]);
 
       if (error) throw error;
 
       toast({
         title: "Traitement ajouté",
-        description: "Le traitement a été enregistré avec succès",
+        description: "Le traitement a été ajouté avec succès",
       });
 
+      // Reset form
       setNewTraitement({
         designation: '',
         date: new Date().toISOString().split('T')[0],
         ordonnance: '',
+        observation: '',
       });
       setTraitementFile(null);
+      setIsAddingTraitement(false);
       
+      // Refresh data
       fetchTraitements();
+
     } catch (err) {
       console.error('Error adding traitement:', err);
       toast({
@@ -268,39 +280,44 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
             description: "Impossible d'uploader le fichier d'ordonnance",
             variant: "destructive",
           });
-          // Continue without the file
+          // Continue without file
         }
       }
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('vaccinations')
         .insert([
-          {
+          { 
             animal_id: animalId,
-            designation: newVaccination.designation,
-            date: newVaccination.date,
-            ordonnance: newVaccination.ordonnance,
+            designation: newVaccination.designation.trim(),
+            date: new Date(newVaccination.date),
+            ordonnance: newVaccination.ordonnance.trim() || null,
             ordonnance_file_path: filePath,
             ordonnance_file_name: fileName,
-          },
-        ])
-        .select();
+            observation: newVaccination.observation.trim() || null,
+          }
+        ]);
 
       if (error) throw error;
 
       toast({
         title: "Vaccination ajoutée",
-        description: "La vaccination a été enregistrée avec succès",
+        description: "La vaccination a été ajoutée avec succès",
       });
 
+      // Reset form
       setNewVaccination({
         designation: '',
         date: new Date().toISOString().split('T')[0],
         ordonnance: '',
+        observation: '',
       });
       setVaccinationFile(null);
+      setIsAddingVaccination(false);
       
+      // Refresh data
       fetchVaccinations();
+
     } catch (err) {
       console.error('Error adding vaccination:', err);
       toast({
@@ -366,12 +383,13 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
       
       const { error } = await supabase
         .from('traitements')
-        .update({
-          designation: editTraitementData.designation,
-          date: editTraitementData.date,
-          ordonnance: editTraitementData.ordonnance,
+        .update({ 
+          designation: editTraitementData.designation.trim(),
+          date: new Date(editTraitementData.date),
+          ordonnance: editTraitementData.ordonnance.trim() || null,
           ordonnance_file_path: filePath,
           ordonnance_file_name: fileName,
+          observation: editTraitementData.observation.trim() || null,
         })
         .eq('id', editTraitementData.id);
 
@@ -379,17 +397,21 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
 
       toast({
         title: "Traitement mis à jour",
-        description: "Le traitement a été modifié avec succès",
+        description: "Le traitement a été mis à jour avec succès",
       });
 
       setIsEditingTraitement(false);
       setEditTraitementFile(null);
+      setIsSavingTraitement(false);
+      
+      // Refresh traitements
       fetchTraitements();
+
     } catch (err) {
       console.error('Error updating traitement:', err);
       toast({
         title: "Erreur",
-        description: "Impossible de modifier le traitement",
+        description: "Impossible de mettre à jour le traitement",
         variant: "destructive",
       });
     } finally {
@@ -450,12 +472,13 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
       
       const { error } = await supabase
         .from('vaccinations')
-        .update({
-          designation: editVaccinationData.designation,
-          date: editVaccinationData.date,
-          ordonnance: editVaccinationData.ordonnance,
+        .update({ 
+          designation: editVaccinationData.designation.trim(),
+          date: new Date(editVaccinationData.date),
+          ordonnance: editVaccinationData.ordonnance.trim() || null,
           ordonnance_file_path: filePath,
           ordonnance_file_name: fileName,
+          observation: editVaccinationData.observation.trim() || null,
         })
         .eq('id', editVaccinationData.id);
 
@@ -463,17 +486,21 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
 
       toast({
         title: "Vaccination mise à jour",
-        description: "La vaccination a été modifiée avec succès",
+        description: "La vaccination a été mise à jour avec succès",
       });
 
       setIsEditingVaccination(false);
       setEditVaccinationFile(null);
+      setIsSavingVaccination(false);
+      
+      // Refresh vaccinations
       fetchVaccinations();
+
     } catch (err) {
       console.error('Error updating vaccination:', err);
       toast({
         title: "Erreur",
-        description: "Impossible de modifier la vaccination",
+        description: "Impossible de mettre à jour la vaccination",
         variant: "destructive",
       });
     } finally {
@@ -571,6 +598,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
       designation: traitement.designation || '',
       date: traitement.date ? new Date(traitement.date).toISOString().split('T')[0] : '',
       ordonnance: traitement.ordonnance || '',
+      observation: traitement.observation || '',
     });
     setEditTraitementFile(null);
     setIsEditingTraitement(true);
@@ -582,7 +610,9 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
       designation: vaccination.designation || '',
       date: vaccination.date ? new Date(vaccination.date).toISOString().split('T')[0] : '',
       ordonnance: vaccination.ordonnance || '',
+      observation: vaccination.observation || '',
     });
+    setEditVaccinationFile(null);
     setIsEditingVaccination(true);
   };
 
@@ -747,6 +777,17 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                     <p className="text-sm text-muted-foreground">{traitementFile.name}</p>
                   )}
                 </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="traitement-observation">Observations</Label>
+                  <Textarea
+                    id="traitement-observation"
+                    value={newTraitement.observation}
+                    onChange={(e) => setNewTraitement({...newTraitement, observation: e.target.value})}
+                    placeholder="Observations sur le traitement"
+                    rows={3}
+                  />
+                </div>
               </div>
               <div className="flex justify-end space-x-2">
                 <DialogClose asChild>
@@ -784,6 +825,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                 <TableHead>Date</TableHead>
                 <TableHead>Ordonnance</TableHead>
                 <TableHead>Fichier</TableHead>
+                <TableHead>Observations</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -812,6 +854,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                       "-"
                     )}
                   </TableCell>
+                  <TableCell>{traitement.observation || "-"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end space-x-2">
                       <Dialog>
@@ -882,6 +925,17 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                               {editTraitementFile && (
                                 <p className="text-sm text-muted-foreground">{editTraitementFile.name}</p>
                               )}
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-traitement-observation">Observations</Label>
+                              <Textarea
+                                id="edit-traitement-observation"
+                                value={editTraitementData.observation}
+                                onChange={(e) => setEditTraitementData({...editTraitementData, observation: e.target.value})}
+                                placeholder="Observations sur le traitement"
+                                rows={3}
+                              />
                             </div>
                           </div>
                           <div className="flex justify-end space-x-2">
@@ -1007,6 +1061,17 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                     <p className="text-sm text-muted-foreground">{vaccinationFile.name}</p>
                   )}
                 </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="vax-observation">Observations</Label>
+                  <Textarea
+                    id="vax-observation"
+                    value={newVaccination.observation}
+                    onChange={(e) => setNewVaccination({...newVaccination, observation: e.target.value})}
+                    placeholder="Observations sur la vaccination"
+                    rows={3}
+                  />
+                </div>
               </div>
               <div className="flex justify-end space-x-2">
                 <DialogClose asChild>
@@ -1044,6 +1109,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                 <TableHead>Date</TableHead>
                 <TableHead>Ordonnance</TableHead>
                 <TableHead>Fichier</TableHead>
+                <TableHead>Observations</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1072,6 +1138,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                       "-"
                     )}
                   </TableCell>
+                  <TableCell>{vaccination.observation || "-"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end space-x-2">
                       <Dialog>
@@ -1142,11 +1209,17 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                               {editVaccinationFile && (
                                 <p className="text-sm text-muted-foreground">{editVaccinationFile.name}</p>
                               )}
-                              {vaccination.ordonnance_file_name && !editVaccinationFile && (
-                                <p className="text-sm text-muted-foreground mt-2">
-                                  Fichier actuel: {vaccination.ordonnance_file_name}
-                                </p>
-                              )}
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-vax-observation">Observations</Label>
+                              <Textarea
+                                id="edit-vax-observation"
+                                value={editVaccinationData.observation}
+                                onChange={(e) => setEditVaccinationData({...editVaccinationData, observation: e.target.value})}
+                                placeholder="Observations sur la vaccination"
+                                rows={3}
+                              />
                             </div>
                           </div>
                           <div className="flex justify-end space-x-2">

@@ -1,8 +1,9 @@
-import React from 'react';
-import { Home, Plus, Calendar, LogOut, UserCog } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, Plus, Calendar, LogOut, UserCog, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import NotificationCenter from './NotificationCenter';
 
 interface NavbarProps {
   className?: string;
@@ -28,14 +29,34 @@ const NavbarItem: React.FC<NavbarItemProps> = ({ icon, label, isActive, onClick 
   </button>
 );
 
+// Custom NavbarNotification component that shows/hides NotificationCenter
+const NavbarNotification: React.FC = () => {
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  return (
+    <div className="relative">
+      <NavbarItem
+        icon={<Bell className="w-6 h-6" />}
+        label="Notifications"
+        onClick={() => setShowNotifications(!showNotifications)}
+      />
+      
+      {showNotifications && (
+        <div className="absolute bottom-full mb-2 right-0">
+          <NotificationCenter />
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const Navbar: React.FC<NavbarProps> = ({ className }) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Afficher le bouton admin pour tous les utilisateurs connectés
-  // const isAdmin = user?.user_metadata?.role === 'admin';
-  const isAdmin = !!user;
+  // Check if user is admin based on metadata
+  const isAdmin = user?.user_metadata?.role === 'admin';
 
   const handleSignOut = async () => {
     await signOut();
@@ -68,6 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({ className }) => {
             onClick={() => navigate('/admin')}
           />
         )}
+        {user && <NavbarNotification />}
         <NavbarItem
           icon={<Calendar className="w-6 h-6" />}
           label="Calendrier"

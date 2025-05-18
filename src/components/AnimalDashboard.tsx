@@ -4,28 +4,70 @@ import { Button } from '@/components/ui/button';
 import AnimalCard from './AnimalCard';
 import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/types/supabase';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, AlertTriangle, Skull } from 'lucide-react';
 import { Navbar } from './Navbar';
 import Header from './Header';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
+type Quarantine = Database['public']['Tables']['quarantines']['Row'];
+
+interface AnimalWithQuarantine extends Animal {
+  quarantine?: Quarantine;
+  isInQuarantine?: boolean;
+  isDeceased?: boolean;
+  deathDate?: string | null;
+}
 
 const AnimalDashboard = () => {
-  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [animals, setAnimals] = useState<AnimalWithQuarantine[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecies, setSelectedSpecies] = useState<string>('');
+  const [showQuarantineOnly, setShowQuarantineOnly] = useState(false);
+  const [showDeceasedOnly, setShowDeceasedOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchAnimals = async () => {
+    const fetchAnimalsAndStatus = async () => {
       try {
-        const { data, error } = await supabase
+        setLoading(true);
+        // Fetch animals
+        const { data: animalsData, error: animalsError } = await supabase
           .from('animaux')
           .select('*');
 
-        if (error) throw error;
-        setAnimals(data);
+        if (animalsError) throw animalsError;
+
+        // Fetch active quarantines (where date_fin is null or date_fin is in the future)
+        const { data: quarantineData, error: quarantineError } = await supabase
+          .from('quarantines')
+          .select('*')
+          .or('date_fin.is.null,date_fin.gt.now()');
+
+        if (quarantineError) throw quarantineError;
+
+        // Fetch deceased animals
+        const { data: deceasedData, error: deceasedError } = await supabase
+          .from('deces')
+          .select('*');
+
+        if (deceasedError) throw deceasedError;
+
+        // Combine animal and status data
+        const animalsWithStatus = animalsData.map(animal => {
+          const activeQuarantine = quarantineData.find(q => q.animal_id === animal.id);
+          const deathRecord = deceasedData.find(d => d.animal_id === animal.id);
+          
+          return {
+            ...animal,
+            quarantine: activeQuarantine || undefined,
+            isInQuarantine: !!activeQuarantine,
+            isDeceased: !!deathRecord,
+            deathDate: deathRecord?.date || null
+          };
+        });
+
+        setAnimals(animalsWithStatus);
         setLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Une erreur est survenue');
@@ -33,7 +75,7 @@ const AnimalDashboard = () => {
       }
     };
 
-    fetchAnimals();
+    fetchAnimalsAndStatus();
 
     const subscription = supabase
       .channel('animaux_changes')
@@ -44,13 +86,45 @@ const AnimalDashboard = () => {
           table: 'animaux' 
         }, 
         () => {
-          fetchAnimals();
+          fetchAnimalsAndStatus();
+        }
+      )
+      .subscribe();
+
+    // Also subscribe to quarantine changes
+    const quarantineSubscription = supabase
+      .channel('quarantines_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'quarantines' 
+        }, 
+        () => {
+          fetchAnimalsAndStatus();
+        }
+      )
+      .subscribe();
+      
+    // Also subscribe to death records changes
+    const decesSubscription = supabase
+      .channel('deces_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'deces' 
+        }, 
+        () => {
+          fetchAnimalsAndStatus();
         }
       )
       .subscribe();
 
     return () => {
       subscription.unsubscribe();
+      quarantineSubscription.unsubscribe();
+      decesSubscription.unsubscribe();
     };
   }, []);
 
@@ -62,11 +136,15 @@ const AnimalDashboard = () => {
       (animal.espece?.toLowerCase().includes(searchTermLower) || false);
     
     const matchesSpecies = !selectedSpecies || animal.espece === selectedSpecies;
+    const matchesQuarantine = !showQuarantineOnly || animal.isInQuarantine;
+    const matchesDeceased = !showDeceasedOnly || animal.isDeceased;
     
-    return matchesSearch && matchesSpecies;
+    return matchesSearch && matchesSpecies && matchesQuarantine && matchesDeceased;
   });
 
   const uniqueSpecies = Array.from(new Set(animals.map(animal => animal.espece).filter(Boolean)));
+  const quarantineCount = animals.filter(animal => animal.isInQuarantine).length;
+  const deceasedCount = animals.filter(animal => animal.isDeceased).length;
 
   if (loading) {
     return (
@@ -96,11 +174,11 @@ const AnimalDashboard = () => {
             placeholder="Rechercher par nom, race ou espèce..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-gray-50 border-none lg:bg-white lg:border"
+            className="pl-10 bg-gray-50 border-shelter-purple border-[1.5px] lg:bg-white"
           />
         </div>
 
-        {/* Catégories */}
+        {/* Catégories et Filtres */}
         <div>
           <h3 className="font-semibold mb-3 lg:hidden">Catégories</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0 lg:flex-wrap scrollbar-hide">
@@ -121,6 +199,26 @@ const AnimalDashboard = () => {
                 {species}
               </Button>
             ))}
+            
+            {/* Bouton quarantaine */}
+            <Button
+              variant={showQuarantineOnly ? 'destructive' : 'outline'}
+              onClick={() => setShowQuarantineOnly(!showQuarantineOnly)}
+              className="rounded-full whitespace-nowrap ml-auto"
+            >
+              <AlertTriangle className="w-4 h-4 mr-1" />
+              Quarantaine {quarantineCount > 0 && `(${quarantineCount})`}
+            </Button>
+            
+            {/* Bouton décès */}
+            <Button
+              variant={showDeceasedOnly ? 'destructive' : 'outline'}
+              onClick={() => setShowDeceasedOnly(!showDeceasedOnly)}
+              className="rounded-full whitespace-nowrap"
+            >
+              <Skull className="w-4 h-4 mr-1" />
+              Décédés {deceasedCount > 0 && `(${deceasedCount})`}
+            </Button>
           </div>
         </div>
 
