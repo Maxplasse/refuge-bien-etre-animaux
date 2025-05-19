@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { MobileTopBar } from './MobileTopBar';
 
 /**
  * Composant de mise en page global pour l'application
@@ -9,7 +10,8 @@ import { Navbar } from './Navbar';
 const AppLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="pb-16 lg:pb-0">
+      <MobileTopBar />
+      <main className="pt-12 pb-24 lg:pt-0 lg:pb-0">
         <Outlet />
       </main>
       <Navbar />

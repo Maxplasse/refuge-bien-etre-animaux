@@ -425,15 +425,16 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold">Gestion de la quarantaine</h3>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+        <h3 className="text-xl font-semibold mb-3 sm:mb-0">Gestion de la quarantaine</h3>
         
         {activeQuarantine ? (
           <Dialog open={isEndQuarantineDialogOpen} onOpenChange={setIsEndQuarantineDialogOpen}>
             <DialogTrigger asChild>
               <Button 
                 variant="outline" 
-                className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                className="border-amber-500 text-amber-700 hover:bg-amber-50 w-full sm:w-auto"
+                size="sm"
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 Terminer la quarantaine
@@ -488,7 +489,8 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
             <DialogTrigger asChild>
               <Button 
                 variant="outline" 
-                className="bg-amber-500 hover:bg-amber-600 text-white"
+                className="bg-amber-500 hover:bg-amber-600 text-white w-full sm:w-auto"
+                size="sm"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Démarrer une quarantaine

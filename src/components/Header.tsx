@@ -42,7 +42,10 @@ const Header: React.FC<HeaderProps> = ({ className }) => {
       </div>
       
       <div className="flex items-center gap-4">
-        {isAdmin && <NotificationCenter />}
+        {/* Show NotificationCenter only on desktop */}
+        <div className="hidden lg:block">
+          {isAdmin && <NotificationCenter />}
+        </div>
         
         {isAdmin && (
           <Button

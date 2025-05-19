@@ -840,31 +840,26 @@ const AnimalDetailPage: React.FC = () => {
           <div className="w-full lg:w-3/5 order-2 lg:order-2">
             <Card>
               <CardContent className="p-6">
-                <Tabs 
-                  defaultValue="quarantine" 
-                  value={activeTab} 
-                  onValueChange={setActiveTab}
-                  className="w-full"
-                >
-                  <TabsList className="w-full grid grid-cols-3 mb-6">
-                    <TabsTrigger value="quarantine">Quarantaine</TabsTrigger>
-                    <TabsTrigger value="health">Santé</TabsTrigger>
-                    <TabsTrigger value="death">État</TabsTrigger>
+                <Tabs defaultValue="quarantine" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-4">
+                    <TabsTrigger value="quarantine" className="text-sm">Quarantaine</TabsTrigger>
+                    <TabsTrigger value="health" className="text-sm">Santé</TabsTrigger>
+                    <TabsTrigger value="death" className="text-sm">État</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="quarantine">
+                  <TabsContent value="quarantine" className="overflow-x-auto">
                     {animal && animal.id && (
                       <QuarantineManagement animalId={animal.id} />
                     )}
                   </TabsContent>
 
-                  <TabsContent value="health">
+                  <TabsContent value="health" className="overflow-x-auto">
                     {animal && animal.id && (
                       <HealthManagement animalId={animal.id} />
                     )}
                   </TabsContent>
 
-                  <TabsContent value="death">
+                  <TabsContent value="death" className="overflow-x-auto">
                     {animal && animal.id && (
                       <DeathManagement animalId={animal.id} />
                     )}

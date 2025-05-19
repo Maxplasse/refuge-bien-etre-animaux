@@ -258,109 +258,121 @@ export default function NotificationCenter() {
   
   // Mark a single notification as read
   const markNotificationAsRead = (id: string) => {
-    // Update UI state
-    setNotifications(prevNotifications => 
-      prevNotifications.map(n => 
-        n.id === id ? { ...n, read: true } : n
-      )
-    );
-    
-    // Update localStorage
+    // Get current read IDs
     const readIds = getReadNotificationIds();
+    
+    // If ID is not already in the list, add it
     if (!readIds.includes(id)) {
       const newReadIds = [...readIds, id];
       saveReadNotificationIds(newReadIds);
+      
+      // Update the UI
+      setNotifications(notifications.map(notif => 
+        notif.id === id ? { ...notif, read: true } : notif
+      ));
     }
   };
   
   // Mark all notifications as read
   const markAllAsRead = () => {
-    // Get all notification IDs that aren't already read
-    const allIds = notifications.filter(n => !n.read).map(n => n.id);
-    if (allIds.length === 0) return;
+    // Get unread notifications
+    const unreadNotifications = notifications.filter(n => !n.read);
+    if (unreadNotifications.length === 0) return;
     
-    // Update UI state
-    setNotifications(prevNotifications => 
-      prevNotifications.map(n => ({ ...n, read: true }))
-    );
+    // Get current read IDs
+    const readIds = getReadNotificationIds();
     
-    // Update localStorage by combining existing read IDs with newly read IDs
-    const existingReadIds = getReadNotificationIds();
-    const newReadIds = [...existingReadIds];
+    // Add all unread notification IDs to the read list
+    const newReadIds = [
+      ...readIds,
+      ...unreadNotifications.map(n => n.id).filter(id => !readIds.includes(id))
+    ];
     
-    // Add any IDs that aren't already in the array
-    allIds.forEach(id => {
-      if (!newReadIds.includes(id)) {
-        newReadIds.push(id);
-      }
-    });
-    
+    // Save to localStorage
     saveReadNotificationIds(newReadIds);
+    
+    // Update the UI
+    setNotifications(notifications.map(n => ({ ...n, read: true })));
   };
 
   return (
     <div className="relative">
-      <Button
-        variant="ghost" 
-        size="icon"
+      <button 
         onClick={toggleNotifications}
-        className="relative"
+        className="relative p-2 text-gray-700 hover:text-shelter-purple focus:outline-none"
+        aria-label="Notifications"
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-6 w-6" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+          <span className="absolute top-1 right-1 inline-flex items-center justify-center h-4 w-4 rounded-full bg-red-500 text-white text-xs font-bold">
             {unreadCount}
           </span>
         )}
-      </Button>
-
+      </button>
+      
       {isOpen && (
         <div 
           ref={panelRef}
-          className="absolute z-50 top-full right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden"
+          className="absolute top-full right-0 mt-2 w-80 md:w-96 bg-white rounded-lg shadow-xl z-50 overflow-hidden max-h-[80vh] overflow-y-auto lg:mt-2 lg:right-0 lg:top-full lg:w-96
+          sm:w-[calc(100vw-2rem)] sm:right-[-0.25rem]"
         >
-          <div className="p-3 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="font-medium">Notifications</h3>
-            {notifications.length > 0 && unreadCount > 0 && (
+          <div className="p-3 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
+            <h3 className="font-semibold text-gray-700">Notifications</h3>
+            {unreadCount > 0 && (
               <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-xs flex items-center gap-1 h-auto py-1"
                 onClick={markAllAsRead}
+                variant="ghost" 
+                size="sm"
+                className="text-xs flex items-center gap-1 h-7 hover:bg-gray-100"
               >
                 <Check className="h-3 w-3" />
-                Tout marquer comme lu
+                <span>Tout marquer comme lu</span>
               </Button>
             )}
           </div>
           
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[60vh] overflow-y-auto">
             {loading ? (
-              <div className="p-4 text-center text-gray-500">Chargement...</div>
+              <div className="p-4 text-center text-gray-500">
+                Chargement des notifications...
+              </div>
             ) : notifications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">Aucune notification</div>
+              <div className="p-4 text-center text-gray-500">
+                Aucune notification
+              </div>
             ) : (
-              notifications.map(notification => (
-                <div 
-                  key={notification.id}
-                  className={cn(
-                    "p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer",
-                    !notification.read && "bg-blue-50"
-                  )}
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  <div className="flex justify-between">
-                    <span className="font-medium">{notification.animal_name}</span>
-                    <span className="text-xs text-gray-500">{formatNotificationDate(notification.date)}</span>
+              <div className="divide-y divide-gray-100">
+                {notifications.map((notification) => (
+                  <div 
+                    key={notification.id} 
+                    className={cn(
+                      "p-3 hover:bg-gray-50 cursor-pointer transition-colors",
+                      notification.read ? "bg-white" : "bg-blue-50"
+                    )}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{notification.animal_name}</span>
+                        <span className={cn(
+                          "text-xs px-1.5 py-0.5 rounded-full",
+                          notification.source === 'quarantine' ? "bg-red-100 text-red-800" :
+                          notification.source === 'treatment' ? "bg-blue-100 text-blue-800" :
+                          "bg-green-100 text-green-800"
+                        )}>
+                          {getSourceText(notification.source)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {formatNotificationDate(notification.date)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 line-clamp-2">
+                      {notification.message}
+                    </p>
                   </div>
-                  <div className="flex justify-between items-center mt-1">
-                    <p className="text-sm text-gray-700">{notification.message}</p>
-                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 rounded-full ml-1">
-                      {getSourceText(notification.source)}
-                    </span>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>
