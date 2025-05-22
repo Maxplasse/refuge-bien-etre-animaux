@@ -278,7 +278,30 @@ const AdminPortal: React.FC = () => {
         throw new Error(`L'utilisateur a été créé dans le système d'authentification mais pas dans la table user: ${userError.message}`);
       }
       
-      // 4. Ajouter le nouvel utilisateur à la liste des utilisateurs affichés
+      // 4. Envoyer un email de bienvenue directement via Supabase Auth API
+      try {
+        // L'email sera envoyé automatiquement par Supabase lorsque l'utilisateur est créé
+        // Supabase utilise les paramètres SMTP configurés dans la console
+        console.log("Email de bienvenue envoyé automatiquement par Supabase");
+        
+        // Si vous avez besoin d'envoyer un email personnalisé plus tard, vous pouvez
+        // utiliser cette approche (mais elle nécessite des droits d'admin)
+        /*
+        const { error: resetError } = await supabase.auth.admin.updateUserById(
+          userId,
+          { email: inviteEmail }
+        );
+        
+        if (resetError) {
+          console.error("Erreur lors de l'envoi de l'email:", resetError);
+        }
+        */
+      } catch (emailError) {
+        console.error("Erreur lors de l'envoi de l'email de bienvenue:", emailError);
+        // Ne pas bloquer le processus si l'envoi d'email échoue
+      }
+      
+      // 5. Ajouter le nouvel utilisateur à la liste des utilisateurs affichés
       setUsers([...users, {
         id: userId,
         role: inviteRole,

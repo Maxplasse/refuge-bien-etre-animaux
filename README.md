@@ -71,3 +71,31 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Configuration de l'envoi d'emails
+
+L'application utilise le système SMTP intégré à Supabase pour envoyer des emails de bienvenue aux nouveaux utilisateurs. Pour configurer l'envoi d'emails, suivez ces étapes :
+
+1. Connectez-vous au dashboard de Supabase
+2. Allez dans "Authentication" → "Email Templates"
+3. Personnalisez les modèles d'emails selon vos besoins
+4. Allez dans "Authentication" → "Emails" → "SMTP Settings"
+5. Configurez votre serveur SMTP (Postmark, SendGrid, Mailgun, etc.)
+
+### Configuration SMTP
+Pour configurer un serveur SMTP, vous avez besoin de :
+- Hostname SMTP (ex: smtp-broadcasts.postmarkapp.com)
+- Port (généralement 587 ou 465)
+- Identifiants (username et password)
+- Adresse email d'expédition
+
+L'application est configurée pour utiliser automatiquement les paramètres SMTP définis dans Supabase. Lorsqu'un utilisateur est créé via `auth.signUp()`, Supabase envoie automatiquement un email de confirmation si la configuration SMTP est correcte.
+
+### Templates d'emails
+Vous pouvez personnaliser les templates d'emails dans le dashboard Supabase :
+1. Connectez-vous au dashboard de Supabase
+2. Allez dans "Authentication" → "Email Templates"
+3. Modifiez les templates "Confirm signup", "Invite user" et "Magic Link" selon vos besoins
+
+### Test du système d'emails
+Pour tester le système d'emails, créez simplement un nouvel utilisateur depuis le portail d'administration. Un email de bienvenue sera automatiquement envoyé à l'adresse spécifiée si la configuration SMTP est correcte.

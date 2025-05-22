@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "lint": {
+    "files": {
+      "include": ["supabase/functions/"]
+    }
+  },
+  "tasks": {
+    "dev": "deno run --allow-env --allow-net --watch supabase/functions/send-welcome-email/index.ts"
+  },
+  "importMap": {
+    "imports": {
+      "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.38.4"
+    }
+  }
+} 

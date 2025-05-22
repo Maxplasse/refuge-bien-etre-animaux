@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import AnimalCard from './AnimalCard';
 import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/types/supabase';
-import { Loader2, Search, AlertTriangle, Skull } from 'lucide-react';
+import { Loader2, Search, AlertTriangle } from 'lucide-react';
 import { Navbar } from './Navbar';
 import Header from './Header';
 
@@ -34,7 +34,8 @@ const AnimalDashboard = () => {
         // Fetch animals
         const { data: animalsData, error: animalsError } = await supabase
           .from('animaux')
-          .select('*');
+          .select('*')
+          .order('nom', { ascending: true });
 
         if (animalsError) throw animalsError;
 
@@ -216,7 +217,6 @@ const AnimalDashboard = () => {
               onClick={() => setShowDeceasedOnly(!showDeceasedOnly)}
               className="rounded-full whitespace-nowrap"
             >
-              <Skull className="w-4 h-4 mr-1" />
               Décédés {deceasedCount > 0 && `(${deceasedCount})`}
             </Button>
           </div>

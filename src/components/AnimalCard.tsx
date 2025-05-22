@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, AlertTriangle, Skull } from 'lucide-react';
+import { MapPin, AlertTriangle } from 'lucide-react';
 import { Database } from '@/types/supabase';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -69,12 +69,6 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
           {animal.isInQuarantine && (
             <div className="bg-red-500 text-white p-1 rounded-full shadow-md" title="En quarantaine">
               <AlertTriangle className="h-4 w-4" />
-            </div>
-          )}
-          
-          {animal.isDeceased && (
-            <div className="bg-gray-700 text-white p-1 rounded-full shadow-md" title="Décédé">
-              <Skull className="h-4 w-4" />
             </div>
           )}
         </div>

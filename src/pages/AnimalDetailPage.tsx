@@ -15,6 +15,7 @@ import { toast } from '@/components/ui/use-toast';
 import QuarantineManagement from '@/components/QuarantineManagement';
 import HealthManagement from '@/components/HealthManagement';
 import DeathManagement from '@/components/DeathManagement';
+import TransferManagement from '@/components/TransferManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';
 import { Navbar } from '@/components/Navbar';
@@ -384,7 +385,7 @@ const AnimalDetailPage: React.FC = () => {
           {/* Left column - Sticky on desktop, top on mobile */}
           <div className="w-full lg:w-2/5 lg:sticky lg:top-4 lg:self-start order-1 lg:order-1">
             <Card className="w-full h-full">
-              <div className="h-64 sm:h-80 bg-gray-200 relative">
+              <div className="h-64 sm:h-80 bg-gray-200 relative rounded-t-lg overflow-hidden">
                 {photoPreview ? (
                   <img 
                     src={photoPreview} 
@@ -844,7 +845,7 @@ const AnimalDetailPage: React.FC = () => {
                   <TabsList className="grid w-full grid-cols-3 mb-4">
                     <TabsTrigger value="quarantine" className="text-sm">Quarantaine</TabsTrigger>
                     <TabsTrigger value="health" className="text-sm">Santé</TabsTrigger>
-                    <TabsTrigger value="death" className="text-sm">État</TabsTrigger>
+                    <TabsTrigger value="death" className="text-sm">État/Transfert</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="quarantine" className="overflow-x-auto">
@@ -861,7 +862,12 @@ const AnimalDetailPage: React.FC = () => {
 
                   <TabsContent value="death" className="overflow-x-auto">
                     {animal && animal.id && (
-                      <DeathManagement animalId={animal.id} />
+                      <>
+                        <DeathManagement animalId={animal.id} />
+                        <div className="mt-6">
+                          <TransferManagement animalId={animal.id} />
+                        </div>
+                      </>
                     )}
                   </TabsContent>
                 </Tabs>

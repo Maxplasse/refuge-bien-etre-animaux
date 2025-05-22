@@ -65,6 +65,41 @@ export interface Database {
           photo_url?: string | null
         }
       }
+      transferts: {
+        Row: {
+          id: number
+          animal_id: number
+          date: string
+          nom_adoptant: string
+          adresse: string | null
+          telephone: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          animal_id: number
+          date: string
+          nom_adoptant: string
+          adresse?: string | null
+          telephone?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          animal_id?: number
+          date?: string
+          nom_adoptant?: string
+          adresse?: string | null
+          telephone?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       quarantines: {
         Row: {
           id: number
@@ -169,6 +204,61 @@ export interface Database {
           designation?: string
           date?: string | null
           ordonnance?: string | null
+          created_at?: string
+        }
+      }
+      deces: {
+        Row: {
+          id: number
+          animal_id: number
+          date: string
+          cause: string | null
+          observations: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          animal_id: number
+          date: string
+          cause?: string | null
+          observations?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          animal_id?: number
+          date?: string
+          cause?: string | null
+          observations?: string | null
+          created_at?: string
+        }
+      }
+      amenants: {
+        Row: {
+          id: number
+          nom_prenom: string
+          entreprise: string | null
+          telephone: string | null
+          email: string | null
+          adresse: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          nom_prenom: string
+          entreprise?: string | null
+          telephone?: string | null
+          email?: string | null
+          adresse?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          nom_prenom?: string
+          entreprise?: string | null
+          telephone?: string | null
+          email?: string | null
+          adresse?: string | null
           created_at?: string
         }
       }
