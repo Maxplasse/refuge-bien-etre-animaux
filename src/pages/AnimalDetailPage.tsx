@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/types/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Edit, Save, X, Camera, Plus } from 'lucide-react';
+import { ArrowLeft, Loader2, Edit, Save, X, Camera, Plus, ChevronsUpDown, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 
@@ -66,6 +68,29 @@ const AnimalDetailPage: React.FC = () => {
   });
   const [isSubmittingAmenant, setIsSubmittingAmenant] = useState(false);
   const [selectedAmenant, setSelectedAmenant] = useState<Amenant | null>(null);
+  const [especeOpen, setEspeceOpen] = useState(false);
+  
+  const [especeSearchTerm, setEspeceSearchTerm] = useState('');
+  const [isEspeceDropdownOpen, setIsEspeceDropdownOpen] = useState(false);
+  const especeDropdownRef = useRef<HTMLDivElement>(null);
+
+  const especes = [
+    { value: "Canard", label: "Canard" },
+    { value: "Chat", label: "Chat" },
+    { value: "Chevre", label: "Chèvre" },
+    { value: "Chien", label: "Chien" },
+    { value: "Chinchilla", label: "Chinchilla" },
+    { value: "Cochon", label: "Cochon" },
+    { value: "Gerbille", label: "Gerbille" },
+    { value: "Hamster", label: "Hamster" },
+    { value: "Lapin", label: "Lapin" },
+    { value: "Pigeon", label: "Pigeon" },
+    { value: "Poule", label: "Poule et coq" },
+    { value: "Rat", label: "Rat" },
+    { value: "Tortue", label: "Tortue" },
+    { value: "Tourterelle", label: "Tourterelle" },
+    { value: "Autre", label: "Autre" },
+  ];
 
   useEffect(() => {
     const fetchAnimal = async () => {
@@ -342,6 +367,30 @@ const AnimalDetailPage: React.FC = () => {
     setIsDialogOpen(open);
   };
 
+  // Effet pour gérer les clics en dehors du dropdown espèce
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (especeDropdownRef.current && !especeDropdownRef.current.contains(event.target as Node)) {
+        setIsEspeceDropdownOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Initialiser la recherche d'espèce avec la valeur sélectionnée
+  useEffect(() => {
+    if (formData.espece && !especeSearchTerm) {
+      const selectedLabel = especes.find(e => e.value === formData.espece)?.label;
+      if (selectedLabel) {
+        setEspeceSearchTerm(selectedLabel);
+      }
+    }
+  }, [formData.espece]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 lg:bg-white">
@@ -473,24 +522,71 @@ const AnimalDetailPage: React.FC = () => {
                         className="font-bold text-lg mb-4"
                       />
                       <div className="mt-4">
-                        <Label htmlFor="espece">Espèce</Label>
-                        <Select 
-                          value={formData.espece || ''} 
-                          onValueChange={(value) => handleSelectChange(value, 'espece')}
-                        >
-                          <SelectTrigger id="espece">
-                            <SelectValue placeholder="Sélectionner une espèce" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Poule">Poule</SelectItem>
-                            <SelectItem value="Canard">Canard</SelectItem>
-                            <SelectItem value="Cochon">Cochon</SelectItem>
-                            <SelectItem value="Chinchilla">Chinchilla</SelectItem>
-                            <SelectItem value="Chat">Chat</SelectItem>
-                            <SelectItem value="Chien">Chien</SelectItem>
-                            <SelectItem value="Autre">Autre</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label htmlFor="espece-search-detail">Espèce</Label>
+                        <div className="relative" ref={especeDropdownRef}>
+                          <Input
+                            id="espece-search-detail"
+                            type="text"
+                            placeholder="Rechercher une espèce..."
+                            value={especeSearchTerm}
+                            onChange={(e) => {
+                              setEspeceSearchTerm(e.target.value);
+                              setIsEspeceDropdownOpen(true);
+                            }}
+                            onFocus={() => setIsEspeceDropdownOpen(true)}
+                            className="w-full mt-1"
+                            aria-haspopup="listbox"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-1 h-full"
+                            onClick={() => setIsEspeceDropdownOpen(!isEspeceDropdownOpen)}
+                          >
+                            <ChevronsUpDown className="h-4 w-4" />
+                          </Button>
+                          
+                          {isEspeceDropdownOpen && (
+                            <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg max-h-60 overflow-auto border">
+                              {especes.filter(e => 
+                                e.label.toLowerCase().includes(especeSearchTerm.toLowerCase())
+                              ).length > 0 ? (
+                                <ul className="py-1">
+                                  {especes
+                                    .filter(e => e.label.toLowerCase().includes(especeSearchTerm.toLowerCase()))
+                                    .map(espece => (
+                                      <li
+                                        key={espece.value}
+                                        className={cn(
+                                          "flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100",
+                                          formData.espece === espece.value ? "bg-gray-100" : ""
+                                        )}
+                                        onClick={() => {
+                                          handleSelectChange(espece.value, 'espece');
+                                          setEspeceSearchTerm(espece.label);
+                                          setIsEspeceDropdownOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            formData.espece === espece.value ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {espece.label}
+                                      </li>
+                                    ))}
+                                </ul>
+                              ) : (
+                                <div className="px-3 py-2 text-gray-500">Aucune espèce trouvée</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {formData.espece && especeSearchTerm !== especes.find(e => e.value === formData.espece)?.label && (
+                          <p className="text-sm text-gray-600 mt-1">Sélectionné: {especes.find(e => e.value === formData.espece)?.label}</p>
+                        )}
                       </div>
                       <div className="mt-4 flex items-center space-x-2">
                         <Checkbox 

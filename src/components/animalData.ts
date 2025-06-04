@@ -1,10 +1,9 @@
-
 export type AnimalStatus = 'active' | 'quarantine' | 'treatment' | 'transferred' | 'deceased';
 
 export interface Animal {
   id: string;
   name: string;
-  species: 'chien' | 'chat' | 'autre';
+  species: 'chat' | 'chien' | 'chevre' | 'cochon' | 'lapin' | 'rat' | 'chinchilla' | 'gerbille' | 'canard' | 'poule' | 'pigeon' | 'tourterelle' | 'tortue' | 'hamster' | 'autre';
   breed?: string;
   status: AnimalStatus;
   gender: 'mâle' | 'femelle';
