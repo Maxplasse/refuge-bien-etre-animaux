@@ -18,7 +18,7 @@ export interface AnimalFormData {
   photo_preview: string | null;
   photo_url: string | null; // Stocke l'URL de la photo après upload
   date_entree: string;
-  espece: string;
+  categorie_id: number | null;
   race: string;
   couleurs: string; // Attention: utilisé comme 'couleurs' dans la base de données
   propriete: string; // Conservé pour l'interface utilisateur mais envoyé comme 'proprietaire' dans la base
@@ -37,7 +37,7 @@ const initialFormData: AnimalFormData = {
   photo_preview: null,
   photo_url: null,
   date_entree: new Date().toISOString().slice(0, 10), // Aujourd'hui au format YYYY-MM-DD
-  espece: '',
+  categorie_id: null,
   race: '',
   couleurs: '',
   propriete: '',
@@ -70,6 +70,8 @@ const AddAnimal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<{ id: number, nom: string }[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   const handleInputChange = (fieldName: keyof AnimalFormData, value: any) => {
     setFormData((prev) => ({
@@ -191,8 +193,8 @@ const AddAnimal: React.FC = () => {
         return;
       }
 
-      if (!formData.espece) {
-        setError('L\'espèce de l\'animal est obligatoire');
+      if (!formData.categorie_id) {
+        setError('La catégorie de l\'animal est obligatoire');
         setIsSubmitting(false);
         return;
       }
@@ -229,7 +231,7 @@ const AddAnimal: React.FC = () => {
       // Données à insérer avec conversion des types si nécessaire
       const animalData = {
         nom: formData.nom.trim(),
-        espece: formData.espece,
+        categorie_id: formData.categorie_id,
         race: formData.race || null,
         couleurs: formData.couleurs || null,
         proprietaire: formData.propriete || null,
@@ -289,6 +291,25 @@ const AddAnimal: React.FC = () => {
   const StepComponent = steps[currentStep].component;
   const isLastStep = currentStep === steps.length - 1;
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const { data, error } = await supabase
+          .from('categories_animaux')
+          .select('id, nom')
+          .order('nom', { ascending: true });
+        if (error) throw error;
+        setCategories(data || []);
+      } catch (error) {
+        // Optionnel : gestion d'erreur
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Mobile Header - only visible on mobile */}
@@ -328,9 +349,9 @@ const AddAnimal: React.FC = () => {
             <form onSubmit={isLastStep ? handleSubmit : (e) => { e.preventDefault(); nextStep(); }}>
               {/* Contenu de l'étape actuelle */}
               <StepComponent 
-                formData={formData} 
+                formData={formData}
                 handleInputChange={handleInputChange}
-                {...(StepComponent === BasicInfoStep ? { handleFileChange } : {})}
+                {...(StepComponent === BasicInfoStep ? { categories, loadingCategories, handleFileChange } : {})}
               />
 
               {/* Affichage des erreurs */}

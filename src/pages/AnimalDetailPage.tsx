@@ -439,13 +439,13 @@ const AnimalDetailPage: React.FC = () => {
                   <img 
                     src={photoPreview} 
                     alt="Prévisualisation" 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain object-center"
                   />
                 ) : animal.photo_url ? (
                   <img 
                     src={animal.photo_url} 
                     alt={animal.nom || 'Photo de l\'animal'} 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain object-center"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">

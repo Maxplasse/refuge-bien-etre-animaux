@@ -3,13 +3,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { AnimalFormData } from '@/pages/AddAnimal';
 import { Button } from '@/components/ui/button';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface BasicInfoStepProps {
   formData: AnimalFormData;
   handleInputChange: (fieldName: keyof AnimalFormData, value: any) => void;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  categories: { id: number, nom: string }[];
+  loadingCategories: boolean;
 }
 
 const especes = [
@@ -34,46 +34,9 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
   formData,
   handleInputChange,
   handleFileChange,
+  categories,
+  loadingCategories,
 }) => {
-  // Gérer la recherche directe dans le champ
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  
-  // S'assurer que espece est toujours une chaîne de caractères
-  const especeValue = formData.espece || '';
-  
-  // Filtrer les espèces en fonction de la recherche
-  const filteredEspeces = especes.filter(espece => 
-    espece.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Obtenir le label à afficher dans le champ
-  const selectedLabel = especeValue 
-    ? especes.find(espece => espece.value === especeValue)?.label 
-    : '';
-    
-  // Effet pour gérer les clics en dehors du dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Initialiser la recherche avec la valeur sélectionnée quand elle change
-  useEffect(() => {
-    if (selectedLabel && !searchTerm) {
-      setSearchTerm(selectedLabel);
-    }
-  }, [selectedLabel]);
-
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Informations de base</h2>
@@ -124,70 +87,26 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
         />
       </div>
       
-      {/* Espèce avec recherche directe */}
+      {/* Sélecteur de catégorie (espèce) */}
       <div className="space-y-2">
-        <Label htmlFor="espece-search">Espèce*</Label>
-        <div className="relative" ref={dropdownRef}>
-          <Input
-            id="espece-search"
-            type="text"
-            placeholder="Rechercher une espèce..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setIsDropdownOpen(true);
-            }}
-            onFocus={() => setIsDropdownOpen(true)}
-            className="w-full"
-            aria-haspopup="listbox"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-0 h-full"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          >
-            <ChevronsUpDown className="h-4 w-4" />
-          </Button>
-          
-          {isDropdownOpen && (
-            <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg max-h-60 overflow-auto border">
-              {filteredEspeces.length > 0 ? (
-                <ul className="py-1">
-                  {filteredEspeces.map(espece => (
-                    <li
-                      key={espece.value}
-                      className={cn(
-                        "flex items-center px-3 py-2 cursor-pointer hover:bg-gray-100",
-                        especeValue === espece.value ? "bg-gray-100" : ""
-                      )}
-                      onClick={() => {
-                        handleInputChange('espece', espece.value);
-                        setSearchTerm(espece.label);
-                        setIsDropdownOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          especeValue === espece.value ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {espece.label}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="px-3 py-2 text-gray-500">Aucune espèce trouvée</div>
-              )}
-            </div>
+        <Label htmlFor="categorie_id">Espèce*</Label>
+        <select
+          id="categorie_id"
+          value={formData.categorie_id || ''}
+          onChange={e => handleInputChange('categorie_id', Number(e.target.value))}
+          required
+          disabled={loadingCategories}
+          className="input-class w-full border rounded px-3 py-2"
+        >
+          <option value="">Sélectionner une espèce</option>
+          {categories.length > 0 ? (
+            categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.nom}</option>
+            ))
+          ) : (
+            !loadingCategories && <option disabled>Aucune catégorie disponible</option>
           )}
-        </div>
-        {/* Afficher la valeur sélectionnée si elle diffère de la recherche */}
-        {especeValue && searchTerm !== selectedLabel && (
-          <p className="text-sm text-gray-600">Sélectionné: {selectedLabel}</p>
-        )}
+        </select>
       </div>
       
       <p className="text-xs text-gray-500 mt-4">* Champs obligatoires</p>

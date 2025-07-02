@@ -27,6 +27,7 @@ export interface Database {
           amenant_id: number | null
           created_at: string
           photo_url: string | null
+          categorie_id: number | null
         }
         Insert: {
           id?: number
@@ -45,6 +46,7 @@ export interface Database {
           amenant_id?: number | null
           created_at?: string
           photo_url?: string | null
+          categorie_id?: number | null
         }
         Update: {
           id?: number
@@ -63,6 +65,7 @@ export interface Database {
           amenant_id?: number | null
           created_at?: string
           photo_url?: string | null
+          categorie_id?: number | null
         }
       }
       transferts: {
@@ -162,6 +165,7 @@ export interface Database {
           designation: string
           date: string | null
           ordonnance: string | null
+          date_fin: string | null
           created_at: string
         }
         Insert: {
@@ -170,6 +174,7 @@ export interface Database {
           designation: string
           date?: string | null
           ordonnance?: string | null
+          date_fin?: string | null
           created_at?: string
         }
         Update: {
@@ -178,6 +183,7 @@ export interface Database {
           designation?: string
           date?: string | null
           ordonnance?: string | null
+          date_fin?: string | null
           created_at?: string
         }
       }

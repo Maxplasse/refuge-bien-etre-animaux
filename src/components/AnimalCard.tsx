@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, AlertTriangle } from 'lucide-react';
+import { MapPin, AlertTriangle, Plus } from 'lucide-react';
 import { Database } from '@/types/supabase';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -14,13 +14,24 @@ interface AnimalWithQuarantine extends Animal {
   isInQuarantine?: boolean;
   isDeceased?: boolean;
   deathDate?: string | null;
+  hasTraitement?: boolean;
 }
 
 interface AnimalCardProps {
   animal: AnimalWithQuarantine;
+  categoryName: string;
 }
 
-const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
+// Icône croix médicale verte
+const MedicalCrossIcon: React.FC<{ size?: number }> = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="12" fill="#34A853" />
+    <rect x="7" y="10" width="10" height="4" rx="1" fill="white" />
+    <rect x="10" y="7" width="4" height="10" rx="1" fill="white" />
+  </svg>
+);
+
+const AnimalCard: React.FC<AnimalCardProps> = ({ animal, categoryName }) => {
   const navigate = useNavigate();
   
   const formatDate = (dateString: string | null) => {
@@ -67,8 +78,13 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
         {/* Status indicators */}
         <div className="absolute top-2 right-2 flex gap-1">
           {animal.isInQuarantine && (
-            <div className="bg-red-500 text-white p-1 rounded-full shadow-md" title="En quarantaine">
-              <AlertTriangle className="h-4 w-4" />
+            <div className="rounded-full shadow-md flex items-center justify-center" style={{ background: '#ef4444', width: 24, height: 24 }} title="En quarantaine">
+              <AlertTriangle className="h-4 w-4" color="white" />
+            </div>
+          )}
+          {animal.hasTraitement && (
+            <div className="rounded-full shadow-md flex items-center justify-center" style={{ background: '#34A853', width: 24, height: 24 }} title="En soin">
+              <MedicalCrossIcon size={24} />
             </div>
           )}
         </div>
@@ -81,16 +97,13 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-base truncate">{animal.nom}</h3>
             <div className="flex gap-1">
-              {animal.isInQuarantine && (
-                <Badge variant="destructive" className="text-xs">Quarantaine</Badge>
-              )}
               {animal.isDeceased && (
                 <Badge variant="secondary" className="text-xs">Décédé</Badge>
               )}
             </div>
           </div>
           <Badge variant="outline" className="capitalize text-xs">
-            {animal.espece}
+            {categoryName}
           </Badge>
         </div>
 
@@ -100,16 +113,13 @@ const AnimalCard: React.FC<AnimalCardProps> = ({ animal }) => {
             <div className="flex items-center">
               <h3 className="font-semibold text-lg">{animal.nom}</h3>
               <div className="flex gap-1 ml-2">
-                {animal.isInQuarantine && (
-                  <Badge variant="destructive">Quarantaine</Badge>
-                )}
                 {animal.isDeceased && (
                   <Badge variant="secondary">Décédé</Badge>
                 )}
               </div>
             </div>
             <Badge variant="outline" className="capitalize">
-              {animal.espece}
+              {categoryName}
             </Badge>
           </div>
           

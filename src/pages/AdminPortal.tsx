@@ -51,6 +51,7 @@ interface User {
   last_name?: string;
   first_name?: string;
   phone_number?: string;
+  email?: string;
 }
 
 // Ajouter une interface pour le nouvel utilisateur
@@ -100,6 +101,22 @@ const AdminPortal: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [editEmail, setEditEmail] = useState('');
+
+  // --- ETATS POUR CATEGORIES ET CREATION ANIMAL ---
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [categories, setCategories] = useState<{ id: number, nom: string }[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  const [isAnimalDialogOpen, setIsAnimalDialogOpen] = useState(false);
+  const [animalName, setAnimalName] = useState('');
+  const [animalSex, setAnimalSex] = useState('');
+  const [animalSterilise, setAnimalSterilise] = useState(false);
+  const [animalDateEntree, setAnimalDateEntree] = useState('');
+  const [animalCategoryId, setAnimalCategoryId] = useState<number | null>(null);
+  const [isCreatingAnimal, setIsCreatingAnimal] = useState(false);
 
   // Vérifier si l'utilisateur est admin
   useEffect(() => {
@@ -143,7 +160,8 @@ const AdminPortal: React.FC = () => {
           access: user.access || 'viewer',
           last_name: user.last_name,
           first_name: user.first_name,
-          phone_number: user.phone_number
+          phone_number: user.phone_number,
+          email: user.email
         })));
       } catch (error) {
         console.error('Erreur lors du chargement des utilisateurs:', error);
@@ -217,6 +235,50 @@ const AdminPortal: React.FC = () => {
     loadAnimals();
   }, [activeTab]);
 
+  // Charger la liste des catégories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const { data, error } = await supabase
+          .from('categories_animaux')
+          .select('id, nom')
+          .order('nom', { ascending: true });
+        if (error) throw error;
+        setCategories(data || []);
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les catégories.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const refreshCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const { data, error } = await supabase
+        .from('categories_animaux')
+        .select('id, nom')
+        .order('nom', { ascending: true });
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les catégories.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
   // Fonction pour envoyer une invitation
   const sendInvite = async () => {
     if (!inviteEmail) {
@@ -268,7 +330,8 @@ const AdminPortal: React.FC = () => {
           access: accessLevel,
           last_name: lastName || null,
           first_name: firstName || null,
-          phone_number: phoneNumber || null
+          phone_number: phoneNumber || null,
+          email: inviteEmail
         });
 
       if (userError) {
@@ -417,8 +480,35 @@ const AdminPortal: React.FC = () => {
           phone_number: phoneNumber,
           role: inviteRole,
           access: accessLevel,
+          email: editEmail,
         })
         .eq('id', selectedUser.id);
+
+      if (selectedUser && selectedUser.email !== editEmail) {
+        try {
+          const response = await fetch('https://tonsdvqvvuvmshkuxty.functions.supabase.co/update-user-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: selectedUser.id,
+              newEmail: editEmail,
+            }),
+          });
+
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || "Erreur lors de la mise à jour de l'email dans Auth");
+          }
+        } catch (err) {
+          toast({
+            title: "Erreur",
+            description: "Impossible de modifier l'email de connexion (Auth).",
+            variant: "destructive"
+          });
+        }
+      }
 
       if (error) throw error;
 
@@ -461,6 +551,7 @@ const AdminPortal: React.FC = () => {
     setPhoneNumber(user.phone_number || '');
     setInviteRole(user.role);
     setAccessLevel(user.access);
+    setEditEmail(user.email || '');
     setIsEditDialogOpen(true);
   };
 
@@ -505,6 +596,211 @@ const AdminPortal: React.FC = () => {
       });
     }
   };
+
+  // --- MODAL AJOUT CATEGORIE ---
+  const renderCategoryDialog = () => (
+    <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Ajouter une catégorie d'animal</DialogTitle>
+          <DialogDescription>
+            Saisissez le nom de la nouvelle catégorie d'animal.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <Input
+            placeholder="Nom de la catégorie"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
+            Annuler
+          </Button>
+          <Button
+            onClick={async () => {
+              if (!newCategory.trim()) return;
+              setIsAddingCategory(true);
+              try {
+                const { error } = await supabase
+                  .from('categories_animaux')
+                  .insert({ nom: newCategory.trim() });
+                if (error) throw error;
+                toast({
+                  title: "Catégorie ajoutée",
+                  description: `La catégorie "${newCategory}" a été ajoutée.`,
+                });
+                setNewCategory('');
+                setIsCategoryDialogOpen(false);
+                await refreshCategories();
+              } catch (error) {
+                toast({
+                  title: "Erreur",
+                  description: "Impossible d'ajouter la catégorie.",
+                  variant: "destructive"
+                });
+              } finally {
+                setIsAddingCategory(false);
+              }
+            }}
+            disabled={isAddingCategory || !newCategory.trim()}
+          >
+            {isAddingCategory ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Ajout...
+              </>
+            ) : (
+              'Ajouter'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  // --- MODAL CREATION ANIMAL ---
+  const renderAnimalDialog = () => (
+    <Dialog open={isAnimalDialogOpen} onOpenChange={setIsAnimalDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Ajouter un animal</DialogTitle>
+          <DialogDescription>
+            Remplissez les informations de l'animal.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="animalName">Nom *</Label>
+            <Input
+              id="animalName"
+              placeholder="Nom de l'animal"
+              value={animalName}
+              onChange={e => setAnimalName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="animalSex">Sexe *</Label>
+            <Select value={animalSex} onValueChange={setAnimalSex}>
+              <SelectTrigger id="animalSex">
+                <SelectValue placeholder="Sélectionner le sexe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="M">Mâle</SelectItem>
+                <SelectItem value="F">Femelle</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="animalSterilise">Stérilisé</Label>
+            <Select value={animalSterilise ? "oui" : "non"} onValueChange={v => setAnimalSterilise(v === "oui")}> 
+              <SelectTrigger id="animalSterilise">
+                <SelectValue placeholder="Stérilisé ?" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="oui">Oui</SelectItem>
+                <SelectItem value="non">Non</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="animalDateEntree">Date d'entrée *</Label>
+            <Input
+              id="animalDateEntree"
+              type="date"
+              value={animalDateEntree}
+              onChange={e => setAnimalDateEntree(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="animalCategory">Catégorie *</Label>
+            <div className="flex gap-2 items-center">
+              <Select
+                value={animalCategoryId ? String(animalCategoryId) : ''}
+                onValueChange={val => setAnimalCategoryId(Number(val))}
+                disabled={loadingCategories}
+              >
+                <SelectTrigger id="animalCategory">
+                  <SelectValue placeholder="Sélectionner une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>
+                      {cat.nom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="icon" onClick={() => setIsCategoryDialogOpen(true)} title="Ajouter une catégorie">
+                <PlusCircle className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsAnimalDialogOpen(false)}>
+            Annuler
+          </Button>
+          <Button
+            onClick={async () => {
+              if (!animalName || !animalSex || !animalDateEntree || !animalCategoryId) {
+                toast({
+                  title: "Erreur",
+                  description: "Veuillez remplir tous les champs obligatoires.",
+                  variant: "destructive"
+                });
+                return;
+              }
+              setIsCreatingAnimal(true);
+              try {
+                const { error } = await supabase
+                  .from('animaux')
+                  .insert({
+                    nom: animalName,
+                    sexe: animalSex,
+                    sterilise: animalSterilise,
+                    date_entree: animalDateEntree,
+                    categorie_id: animalCategoryId
+                  });
+                if (error) throw error;
+                toast({
+                  title: "Animal ajouté",
+                  description: `L'animal "${animalName}" a été ajouté.`,
+                });
+                setAnimalName('');
+                setAnimalSex('');
+                setAnimalSterilise(false);
+                setAnimalDateEntree('');
+                setAnimalCategoryId(null);
+                setIsAnimalDialogOpen(false);
+                await refreshCategories();
+                // Optionnel : recharge la liste des animaux ici
+              } catch (error) {
+                toast({
+                  title: "Erreur",
+                  description: "Impossible d'ajouter l'animal.",
+                  variant: "destructive"
+                });
+              } finally {
+                setIsCreatingAnimal(false);
+              }
+            }}
+            disabled={isCreatingAnimal}
+          >
+            {isCreatingAnimal ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Ajout...
+              </>
+            ) : (
+              'Ajouter'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   // Rendu du composant de gestion des utilisateurs
   const renderUserManagement = () => (
@@ -638,6 +934,17 @@ const AdminPortal: React.FC = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editEmail">Email *</Label>
+                    <Input
+                      id="editEmail"
+                      type="email"
+                      placeholder="Email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      required
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="role">Rôle professionnel *</Label>
                     <Select value={inviteRole} onValueChange={setInviteRole}>
@@ -808,12 +1115,24 @@ const AdminPortal: React.FC = () => {
           <CardTitle>Gestion des animaux</CardTitle>
           <CardDescription>Gérer les informations des animaux du refuge</CardDescription>
         </div>
-        <Button className="flex items-center gap-2" onClick={exportToExcel}>
-          <Download className="h-4 w-4" />
-          <span>Exporter en Excel</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button className="flex items-center gap-2" onClick={exportToExcel}>
+            <Download className="h-4 w-4" />
+            <span>Exporter en Excel</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="flex items-center gap-2 border rounded-lg bg-white text-black font-medium shadow-sm hover:bg-gray-100"
+            onClick={() => setIsCategoryDialogOpen(true)}
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span>Ajouter une catégorie</span>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
+        {renderCategoryDialog()}
+        {renderAnimalDialog()}
         {loadingAnimals ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-8 w-8 animate-spin text-shelter-purple" />
@@ -894,6 +1213,14 @@ const AdminPortal: React.FC = () => {
                         <Eye className="h-4 w-4 mr-2" />
                         Voir
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteAnimal(animal.id)}
+                        className="text-red-500 ml-2"
+                      >
+                        Supprimer
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -904,6 +1231,31 @@ const AdminPortal: React.FC = () => {
       </CardContent>
     </Card>
   );
+
+  // Ajoute la fonction handleDeleteAnimal dans le composant AdminPortal
+  const handleDeleteAnimal = async (animalId: number) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet animal ? Cette action est irréversible.")) return;
+    try {
+      const { error } = await supabase
+        .from('animaux')
+        .delete()
+        .eq('id', animalId);
+
+      if (error) throw error;
+
+      setAnimals(animals => animals.filter(a => a.id !== animalId));
+      toast({
+        title: "Animal supprimé",
+        description: "L'animal a bien été supprimé.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'animal.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

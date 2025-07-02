@@ -47,6 +47,7 @@ interface TraitementRecord {
   ordonnance_file_name: string | null;
   created_at: string;
   observation: string | null;
+  date_fin: string | null;
 }
 
 interface VaccinationRecord {
@@ -77,6 +78,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     date: new Date().toISOString().split('T')[0],
     ordonnance: '',
     observation: '',
+    date_fin: '',
   });
   
   const [newVaccination, setNewVaccination] = useState({
@@ -100,6 +102,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     date: '',
     ordonnance: '',
     observation: '',
+    date_fin: '',
   });
   
   const [isEditingVaccination, setIsEditingVaccination] = useState(false);
@@ -216,6 +219,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
             ordonnance_file_path: filePath,
             ordonnance_file_name: fileName,
             observation: newTraitement.observation.trim() || null,
+            date_fin: newTraitement.date_fin ? new Date(newTraitement.date_fin) : null,
           }
         ]);
 
@@ -232,6 +236,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
         date: new Date().toISOString().split('T')[0],
         ordonnance: '',
         observation: '',
+        date_fin: '',
       });
       setTraitementFile(null);
       setIsAddingTraitement(false);
@@ -390,6 +395,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
           ordonnance_file_path: filePath,
           ordonnance_file_name: fileName,
           observation: editTraitementData.observation.trim() || null,
+          date_fin: editTraitementData.date_fin ? new Date(editTraitementData.date_fin) : null,
         })
         .eq('id', editTraitementData.id);
 
@@ -599,6 +605,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
       date: traitement.date ? new Date(traitement.date).toISOString().split('T')[0] : '',
       ordonnance: traitement.ordonnance || '',
       observation: traitement.observation || '',
+      date_fin: traitement.date_fin ? new Date(traitement.date_fin).toISOString().split('T')[0] : '',
     });
     setEditTraitementFile(null);
     setIsEditingTraitement(true);
@@ -743,6 +750,16 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label htmlFor="date_fin">Date de fin de traitement</Label>
+                  <Input
+                    id="date_fin"
+                    type="date"
+                    value={newTraitement.date_fin}
+                    onChange={(e) => setNewTraitement({...newTraitement, date_fin: e.target.value})}
+                  />
+                </div>
+                
+                <div className="space-y-2">
                   <Label htmlFor="ordonnance">Numéro d'ordonnance</Label>
                   <Input
                     id="ordonnance"
@@ -823,6 +840,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
               <TableRow>
                 <TableHead>Désignation</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Fin</TableHead>
                 <TableHead>Ordonnance</TableHead>
                 <TableHead>Fichier</TableHead>
                 <TableHead>Observations</TableHead>
@@ -834,6 +852,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                 <TableRow key={traitement.id}>
                   <TableCell>{traitement.designation}</TableCell>
                   <TableCell>{formatDate(traitement.date)}</TableCell>
+                  <TableCell>{formatDate(traitement.date_fin)}</TableCell>
                   <TableCell>{traitement.ordonnance || "-"}</TableCell>
                   <TableCell>
                     {traitement.ordonnance_file_path ? (
@@ -889,6 +908,16 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                                 type="date"
                                 value={editTraitementData.date}
                                 onChange={(e) => setEditTraitementData({...editTraitementData, date: e.target.value})}
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-date-fin">Date de fin de traitement</Label>
+                              <Input
+                                id="edit-date-fin"
+                                type="date"
+                                value={editTraitementData.date_fin}
+                                onChange={(e) => setEditTraitementData({...editTraitementData, date_fin: e.target.value})}
                               />
                             </div>
                             
