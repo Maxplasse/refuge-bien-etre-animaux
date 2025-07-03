@@ -26,7 +26,9 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-type Animal = Database['public']['Tables']['animaux']['Row'];
+type Animal = Database['public']['Tables']['animaux']['Row'] & {
+  proprio_observations?: string;
+};
 
 interface Amenant {
   id: number;
@@ -847,6 +849,20 @@ const AnimalDetailPage: React.FC = () => {
                           className="mt-1"
                         />
                       </div>
+                      {/* Champ Observations du propriétaire toujours visible en édition */}
+                      {isEditing && (
+                        <div className="sm:col-span-2 mt-4">
+                          <Label htmlFor="proprio_observations">Observations propriétaire</Label>
+                          <Textarea
+                            id="proprio_observations"
+                            name="proprio_observations"
+                            value={formData.proprio_observations || ''}
+                            onChange={handleInputChange}
+                            className="mt-1"
+                            rows={3}
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -926,6 +942,11 @@ const AnimalDetailPage: React.FC = () => {
                           <p className="mt-2">{animal.proprietaire}</p>
                         </div>
                       )}
+                      {/* Section toujours visible pour les observations du propriétaire */}
+                      <div className="mt-6">
+                        <h3 className="text-lg font-semibold border-b pb-2">Observations propriétaire</h3>
+                        <p className="mt-2">{animal.proprio_observations || "Aucune observation"}</p>
+                      </div>
                     </>
                   )}
                 </div>
@@ -937,10 +958,10 @@ const AnimalDetailPage: React.FC = () => {
           <div className="w-full lg:w-3/5 order-2 lg:order-2">
             <Card>
               <CardContent className="p-6">
-                <Tabs defaultValue="quarantine" className="w-full">
+                <Tabs defaultValue="health" className="w-full">
                   <TabsList className="grid w-full grid-cols-3 mb-4">
-                    <TabsTrigger value="quarantine" className="text-sm">Quarantaine</TabsTrigger>
                     <TabsTrigger value="health" className="text-sm">Santé</TabsTrigger>
+                    <TabsTrigger value="quarantine" className="text-sm">Quarantaine</TabsTrigger>
                     <TabsTrigger value="death" className="text-sm">État/Transfert</TabsTrigger>
                   </TabsList>
 

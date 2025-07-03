@@ -62,6 +62,14 @@ interface VaccinationRecord {
   observation: string | null;
 }
 
+interface WeightRecord {
+  id: number;
+  animal_id: number;
+  date: string;
+  poids: number;
+  remarque: string | null;
+}
+
 interface HealthManagementProps {
   animalId: number;
 }
@@ -69,6 +77,7 @@ interface HealthManagementProps {
 const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
   const [traitements, setTraitements] = useState<TraitementRecord[]>([]);
   const [vaccinations, setVaccinations] = useState<VaccinationRecord[]>([]);
+  const [weights, setWeights] = useState<WeightRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('traitements');
   
@@ -86,6 +95,12 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     date: new Date().toISOString().split('T')[0],
     ordonnance: '',
     observation: '',
+  });
+
+  const [newWeight, setNewWeight] = useState({
+    date: new Date().toISOString().split('T')[0],
+    poids: '',
+    remarque: '',
   });
 
   // File states
@@ -123,10 +138,15 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
   const [isAddingVaccination, setIsAddingVaccination] = useState(false);
   const [isSavingTraitement, setIsSavingTraitement] = useState(false);
   const [isSavingVaccination, setIsSavingVaccination] = useState(false);
+  const [isAddingWeight, setIsAddingWeight] = useState(false);
+  const [loadingWeights, setLoadingWeights] = useState(false);
+
+  const [isWeightDialogOpen, setIsWeightDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchTraitements();
     fetchVaccinations();
+    fetchWeights();
   }, [animalId]);
 
   const fetchTraitements = async () => {
@@ -172,6 +192,28 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWeights = async () => {
+    try {
+      setLoadingWeights(true);
+      const { data, error } = await supabase
+        .from('poids')
+        .select('*')
+        .eq('animal_id', animalId)
+        .order('date', { ascending: false });
+      if (error) throw error;
+      setWeights(data || []);
+    } catch (err) {
+      console.error('Error fetching weights:', err);
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les données de poids",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingWeights(false);
     }
   };
 
@@ -332,6 +374,51 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
       });
     } finally {
       setIsAddingVaccination(false);
+    }
+  };
+
+  const addWeight = async () => {
+    try {
+      if (!newWeight.poids || isNaN(Number(newWeight.poids))) {
+        toast({
+          title: "Champ requis",
+          description: "Veuillez indiquer un poids valide",
+          variant: "destructive",
+        });
+        return;
+      }
+      setIsAddingWeight(true);
+      const { error } = await supabase
+        .from('poids')
+        .insert([
+          {
+            animal_id: animalId,
+            date: newWeight.date,
+            poids: Number(newWeight.poids),
+            remarque: newWeight.remarque || null,
+          },
+        ]);
+      if (error) throw error;
+      toast({
+        title: "Poids ajouté",
+        description: "Le poids a été ajouté avec succès",
+      });
+      setNewWeight({
+        date: new Date().toISOString().split('T')[0],
+        poids: '',
+        remarque: '',
+      });
+      setIsWeightDialogOpen(false);
+      fetchWeights();
+    } catch (err) {
+      console.error('Error adding weight:', err);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter le poids",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingWeight(false);
     }
   };
 
@@ -598,6 +685,28 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     }
   };
 
+  const deleteWeight = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from('poids')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      toast({
+        title: "Poids supprimé",
+        description: "L'entrée de poids a été supprimée",
+      });
+      fetchWeights();
+    } catch (err) {
+      console.error('Error deleting weight:', err);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le poids",
+        variant: "destructive",
+      });
+    }
+  };
+
   const prepareEditTraitement = (traitement: TraitementRecord) => {
     setEditTraitementData({
       id: traitement.id,
@@ -685,7 +794,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     }
   };
 
-  if (loading && traitements.length === 0 && vaccinations.length === 0) {
+  if (loading && traitements.length === 0 && vaccinations.length === 0 && weights.length === 0) {
     return (
       <div className="flex justify-center py-6">
         <Loader2 className="h-6 w-6 animate-spin text-shelter-purple" />
@@ -704,9 +813,10 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
         onValueChange={setActiveTab}
         className="w-full"
       >
-        <TabsList className="w-full grid grid-cols-2 mb-6">
+        <TabsList className="w-full grid grid-cols-3 mb-6">
           <TabsTrigger value="traitements">Traitements</TabsTrigger>
-          <TabsTrigger value="vaccinations">Vaccinations</TabsTrigger>
+          <TabsTrigger value="poids">Poids</TabsTrigger>
+          <TabsTrigger value="vaccinations">Vaccins</TabsTrigger>
         </TabsList>
       </Tabs>
       
@@ -1016,6 +1126,127 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
         )}
       </div>
       
+      {/* Poids content */}
+      <div className={activeTab === 'poids' ? 'block' : 'hidden'}>
+        <div className="flex justify-end mb-4">
+          <Dialog open={isWeightDialogOpen} onOpenChange={setIsWeightDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="default" className="bg-shelter-purple hover:bg-shelter-purple/90 text-white" onClick={() => setIsWeightDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvelle pesée
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Ajouter un poids</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="weight-date">Date</Label>
+                  <Input
+                    id="weight-date"
+                    type="date"
+                    value={newWeight.date}
+                    onChange={e => setNewWeight({ ...newWeight, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="weight-poids">Poids (kg)</Label>
+                  <Input
+                    id="weight-poids"
+                    type="number"
+                    step="0.01"
+                    value={newWeight.poids}
+                    onChange={e => setNewWeight({ ...newWeight, poids: e.target.value })}
+                    placeholder="Poids en kg"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="weight-remarque">Remarque</Label>
+                  <Textarea
+                    id="weight-remarque"
+                    value={newWeight.remarque}
+                    onChange={e => setNewWeight({ ...newWeight, remarque: e.target.value })}
+                    placeholder="Remarque sur la pesée (optionnel)"
+                    rows={2}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <DialogClose asChild>
+                  <Button variant="outline" onClick={() => setIsWeightDialogOpen(false)}>Annuler</Button>
+                </DialogClose>
+                <Button onClick={addWeight} disabled={isAddingWeight}>
+                  {isAddingWeight ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
+                  Ajouter
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        {loadingWeights ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="h-6 w-6 animate-spin text-shelter-purple" />
+          </div>
+        ) : weights.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-center text-gray-500">
+                Aucun poids enregistré
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Poids (kg)</TableHead>
+                <TableHead>Remarque</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {weights.map((weight) => (
+                <TableRow key={weight.id}>
+                  <TableCell>{formatDate(weight.date)}</TableCell>
+                  <TableCell>{weight.poids}</TableCell>
+                  <TableCell>{weight.remarque || '-'}</TableCell>
+                  <TableCell className="text-right">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-red-500">
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Supprimer la pesée</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Êtes-vous sûr de vouloir supprimer cette entrée de poids ? Cette action est irréversible.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteWeight(weight.id)}>
+                            Supprimer
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+      
       {/* Vaccinations content */}
       <div className={activeTab === 'vaccinations' ? 'block' : 'hidden'}>
         <div className="flex justify-end mb-4">
@@ -1026,7 +1257,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                 className="bg-shelter-purple hover:bg-shelter-purple/90 text-white"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Nouvelle vaccination
+                Nouveau vaccin
               </Button>
             </DialogTrigger>
             <DialogContent>

@@ -77,6 +77,7 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
     resultat_test: '',
   });
   const [isEditingQuarantine, setIsEditingQuarantine] = useState(false);
+  const [editDialogOpenId, setEditDialogOpenId] = useState<number | null>(null);
   const [editQuarantineData, setEditQuarantineData] = useState({
     id: 0,
     raison: '',
@@ -587,6 +588,103 @@ const QuarantineManagement: React.FC<QuarantineManagementProps> = ({ animalId })
                       <span> au {formatDate(quarantine.date_fin)}</span>
                     )}
                   </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Dialog open={editDialogOpenId === quarantine.id} onOpenChange={(open) => {
+                    if (open) {
+                      prepareEditQuarantine(quarantine);
+                      setEditDialogOpenId(quarantine.id);
+                    } else {
+                      setEditDialogOpenId(null);
+                    }
+                  }}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" aria-label="Modifier" onClick={() => {
+                        prepareEditQuarantine(quarantine);
+                        setEditDialogOpenId(quarantine.id);
+                      }}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Modifier la quarantaine</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="editRaison">Raison</Label>
+                          <Textarea
+                            id="editRaison"
+                            value={editQuarantineData.raison}
+                            onChange={e => setEditQuarantineData({ ...editQuarantineData, raison: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="editDateDebut">Date de début</Label>
+                          <Input
+                            id="editDateDebut"
+                            type="date"
+                            value={editQuarantineData.date_debut}
+                            onChange={e => setEditQuarantineData({ ...editQuarantineData, date_debut: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="editDateFin">Date de fin</Label>
+                          <Input
+                            id="editDateFin"
+                            type="date"
+                            value={editQuarantineData.date_fin || ''}
+                            onChange={e => setEditQuarantineData({ ...editQuarantineData, date_fin: e.target.value || null })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="editObservations">Observations générales</Label>
+                          <Textarea
+                            id="editObservations"
+                            value={editQuarantineData.observations}
+                            onChange={e => setEditQuarantineData({ ...editQuarantineData, observations: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex justify-end space-x-2 pt-4">
+                          <DialogClose asChild>
+                            <Button variant="outline" onClick={() => setEditDialogOpenId(null)}>
+                              <X className="mr-2 h-4 w-4" />
+                              Annuler
+                            </Button>
+                          </DialogClose>
+                          <Button onClick={async () => { await editQuarantine(); setEditDialogOpenId(null); }} disabled={isEditingQuarantine}>
+                            {isEditingQuarantine ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Save className="mr-2 h-4 w-4" />
+                            )}
+                            Enregistrer
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" aria-label="Supprimer">
+                        <Trash className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer la quarantaine ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action est irréversible. Toutes les observations liées seront également supprimées.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteQuarantine(quarantine.id)} className="bg-red-600 hover:bg-red-700">
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
