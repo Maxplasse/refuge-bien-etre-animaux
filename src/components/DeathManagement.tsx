@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Plus, X, Calendar } from 'lucide-react';
+import { Loader2, Plus, X, Calendar, Download } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,8 @@ interface DeathRecord {
   date: string;
   cause: string;
   autopsie: boolean;
+  autopsie_file_name: string | null;
+  autopsie_file_url: string | null;
 }
 
 interface DeathManagementProps {
@@ -41,9 +43,24 @@ const DeathManagement: React.FC<DeathManagementProps> = ({ animalId }) => {
     autopsie: false,
   });
 
+  // File state
+  const [autopsieFile, setAutopsieFile] = useState<File | null>(null);
+
   useEffect(() => {
+    checkAuth();
     fetchDeathRecord();
   }, [animalId]);
+
+  const checkAuth = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('Session actuelle:', session);
+    if (error) {
+      console.error('Erreur de vérification de session:', error);
+    }
+    if (!session) {
+      console.error('Pas de session active!');
+    }
+  };
 
   const fetchDeathRecord = async () => {
     try {
@@ -69,8 +86,27 @@ const DeathManagement: React.FC<DeathManagementProps> = ({ animalId }) => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAutopsieFile(e.target.files[0]);
+    }
+  };
+
   const addDeathRecord = async () => {
     try {
+      // Vérifier l'authentification avant de procéder
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Erreur d'authentification",
+          description: "Vous devez être connecté pour effectuer cette action",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Session utilisateur:', session);
+
       if (!newDeathRecord.cause.trim()) {
         toast({
           title: "Champ requis",
@@ -80,18 +116,97 @@ const DeathManagement: React.FC<DeathManagementProps> = ({ animalId }) => {
         return;
       }
 
-      const { error } = await supabase
-        .from('deces')
-        .insert([
-          {
-            animal_id: animalId,
-            date: newDeathRecord.date,
-            cause: newDeathRecord.cause,
-            autopsie: newDeathRecord.autopsie,
-          },
-        ]);
+      let filePath = null;
+      let fileName = null;
 
-      if (error) throw error;
+      // Upload file if exists and autopsie is true
+      if (newDeathRecord.autopsie && autopsieFile) {
+        try {
+          console.log('Début de l\'upload du fichier d\'autopsie');
+          console.log('Fichier à uploader:', autopsieFile);
+          
+          // Garder le nom original du fichier pour la base de données
+          const originalFileName = autopsieFile.name;
+          
+          // Créer un nom unique pour le stockage
+          const fileExt = autopsieFile.name.split('.').pop();
+          const storageFileName = `${Date.now()}.${fileExt}`;
+          filePath = `${animalId}/${storageFileName}`;
+          
+          console.log('Nom original du fichier:', originalFileName);
+          console.log('Chemin du fichier dans le storage:', filePath);
+          
+          // Vérifier si le fichier existe déjà
+          const { data: existingFile } = await supabase.storage
+            .from('deces')
+            .list(animalId.toString());
+
+          if (existingFile?.some(file => file.name === storageFileName)) {
+            console.log('Le fichier existe déjà, tentative de suppression');
+            await supabase.storage
+              .from('deces')
+              .remove([`${animalId}/${storageFileName}`]);
+          }
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('deces')
+            .upload(filePath, autopsieFile, {
+              cacheControl: '3600',
+              upsert: true,
+              contentType: autopsieFile.type
+            });
+
+          if (uploadError) {
+            console.error('Erreur d\'upload:', uploadError);
+            throw uploadError;
+          }
+
+          console.log('Upload réussi:', uploadData);
+
+          // Mettre à jour fileName avec le nom original
+          fileName = originalFileName;
+
+          // Get public URL
+          const { data: publicUrlData } = await supabase.storage
+            .from('deces')
+            .getPublicUrl(filePath);
+
+          console.log('URL publique:', publicUrlData);
+          filePath = publicUrlData.publicUrl;
+        } catch (err) {
+          console.error('Erreur détaillée lors de l\'upload:', err);
+          toast({
+            title: "Erreur d'upload",
+            description: "Impossible d'uploader le fichier d'autopsie. Veuillez réessayer.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      const deathRecord = {
+        animal_id: animalId,
+        date: newDeathRecord.date,
+        cause: newDeathRecord.cause,
+        autopsie: newDeathRecord.autopsie,
+        autopsie_file_name: fileName,
+        autopsie_file_url: filePath
+      };
+
+      console.log('Tentative d\'insertion avec les données:', deathRecord);
+
+      const { data, error } = await supabase
+        .from('deces')
+        .insert([deathRecord])
+        .select();
+
+      if (error) {
+        console.error('Erreur d\'insertion dans la table deces:', error);
+        console.error('Détails complets de l\'erreur:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+
+      console.log('Insertion réussie, données retournées:', data);
 
       toast({
         title: "Décès enregistré",
@@ -103,6 +218,7 @@ const DeathManagement: React.FC<DeathManagementProps> = ({ animalId }) => {
         cause: '',
         autopsie: false,
       });
+      setAutopsieFile(null);
       setIsDialogOpen(false);
       fetchDeathRecord();
     } catch (err) {
@@ -110,6 +226,49 @@ const DeathManagement: React.FC<DeathManagementProps> = ({ animalId }) => {
       toast({
         title: "Erreur",
         description: "Impossible d'enregistrer les informations de décès",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadAutopsieFile = async (fileUrl: string, fileName: string) => {
+    try {
+      console.log('Tentative de téléchargement du fichier:', fileUrl);
+      
+      // Extraire le chemin relatif de l'URL complète
+      const pathMatch = fileUrl.match(/\/deces\/(.+)$/);
+      if (!pathMatch) {
+        throw new Error('Format d\'URL invalide');
+      }
+      const filePath = pathMatch[1];
+      
+      console.log('Chemin du fichier pour le téléchargement:', filePath);
+      
+      const { data, error } = await supabase.storage
+        .from('deces')
+        .download(filePath);
+
+      if (error) {
+        console.error('Erreur lors du téléchargement:', error);
+        throw error;
+      }
+
+      // Créer un blob et télécharger le fichier
+      const blob = new Blob([data]);
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName || 'autopsie.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+    } catch (err) {
+      console.error('Erreur détaillée lors du téléchargement:', err);
+      toast({
+        title: "Erreur de téléchargement",
+        description: "Impossible de télécharger le fichier d'autopsie. Veuillez réessayer.",
         variant: "destructive",
       });
     }
@@ -189,6 +348,35 @@ const DeathManagement: React.FC<DeathManagementProps> = ({ animalId }) => {
                   />
                   <Label htmlFor="autopsie">Autopsie effectuée</Label>
                 </div>
+
+                {newDeathRecord.autopsie && (
+                  <div className="space-y-2">
+                    <Label htmlFor="autopsie-file">Rapport d'autopsie</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="autopsie-file"
+                        type="file"
+                        onChange={handleFileChange}
+                        accept=".pdf,.doc,.docx"
+                        className="flex-1"
+                      />
+                      {autopsieFile && (
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => setAutopsieFile(null)}
+                          className="flex-none"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {autopsieFile && (
+                      <p className="text-sm text-muted-foreground">{autopsieFile.name}</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex justify-end space-x-2 pt-4">
                   <DialogClose asChild>
                     <Button variant="outline">
@@ -227,7 +415,20 @@ const DeathManagement: React.FC<DeathManagementProps> = ({ animalId }) => {
             </div>
             <div>
               <h4 className="font-medium mb-1">Autopsie</h4>
-              <p className="text-gray-700">{deathRecord.autopsie ? 'Oui' : 'Non'}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-gray-700">{deathRecord.autopsie ? 'Oui' : 'Non'}</p>
+                {deathRecord.autopsie && deathRecord.autopsie_file_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadAutopsieFile(deathRecord.autopsie_file_url, deathRecord.autopsie_file_name || 'autopsie.pdf')}
+                    className="ml-2"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Télécharger le rapport
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
