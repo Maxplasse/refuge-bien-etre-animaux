@@ -45,6 +45,12 @@ interface TraitementRecord {
   ordonnance: string | null;
   ordonnance_file_path: string | null;
   ordonnance_file_name: string | null;
+  fichier_supplementaire_1_path: string | null;
+  fichier_supplementaire_1_name: string | null;
+  fichier_supplementaire_2_path: string | null;
+  fichier_supplementaire_2_name: string | null;
+  fichier_supplementaire_3_path: string | null;
+  fichier_supplementaire_3_name: string | null;
   created_at: string;
   observation: string | null;
   date_fin: string | null;
@@ -105,6 +111,8 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
 
   // File states
   const [traitementFile, setTraitementFile] = useState<File | null>(null);
+  const [traitementSupplementaryFiles, setTraitementSupplementaryFiles] = useState<(File | null)[]>([null, null, null]);
+  const [showSupplementaryFiles, setShowSupplementaryFiles] = useState(false);
   const [vaccinationFile, setVaccinationFile] = useState<File | null>(null);
   const [isUploadingTraitementFile, setIsUploadingTraitementFile] = useState(false);
   const [isUploadingVaccinationFile, setIsUploadingVaccinationFile] = useState(false);
@@ -131,6 +139,8 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
 
   // Edit file states
   const [editTraitementFile, setEditTraitementFile] = useState<File | null>(null);
+  const [editTraitementSupplementaryFiles, setEditTraitementSupplementaryFiles] = useState<(File | null)[]>([null, null, null]);
+  const [showEditSupplementaryFiles, setShowEditSupplementaryFiles] = useState(false);
   const [editVaccinationFile, setEditVaccinationFile] = useState<File | null>(null);
   
   // Loading states
@@ -249,6 +259,21 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
           // Continue without file
         }
       }
+
+      // Handle supplementary files upload
+      const supplementaryFilePaths: (string | null)[] = [null, null, null];
+      const supplementaryFileNames: (string | null)[] = [null, null, null];
+      
+      for (let i = 0; i < traitementSupplementaryFiles.length; i++) {
+        const file = traitementSupplementaryFiles[i];
+        if (file) {
+          const uploadedPath = await uploadFile(file, 'traitementsordonnances');
+          if (uploadedPath) {
+            supplementaryFilePaths[i] = uploadedPath;
+            supplementaryFileNames[i] = file.name;
+          }
+        }
+      }
       
       const { error } = await supabase
         .from('traitements')
@@ -260,6 +285,12 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
             ordonnance: newTraitement.ordonnance.trim() || null,
             ordonnance_file_path: filePath,
             ordonnance_file_name: fileName,
+            fichier_supplementaire_1_path: supplementaryFilePaths[0],
+            fichier_supplementaire_1_name: supplementaryFileNames[0],
+            fichier_supplementaire_2_path: supplementaryFilePaths[1],
+            fichier_supplementaire_2_name: supplementaryFileNames[1],
+            fichier_supplementaire_3_path: supplementaryFilePaths[2],
+            fichier_supplementaire_3_name: supplementaryFileNames[2],
             observation: newTraitement.observation.trim() || null,
             date_fin: newTraitement.date_fin ? new Date(newTraitement.date_fin) : null,
           }
@@ -281,6 +312,8 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
         date_fin: '',
       });
       setTraitementFile(null);
+      setTraitementSupplementaryFiles([null, null, null]);
+      setShowSupplementaryFiles(false);
       setIsAddingTraitement(false);
       
       // Refresh data
@@ -435,10 +468,19 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
 
       setIsSavingTraitement(true);
       
-      // Get current traitement data to check if we need to update file
+      // Get current traitement data to check if we need to update files
       const { data: currentData, error: fetchError } = await supabase
         .from('traitements')
-        .select('ordonnance_file_path, ordonnance_file_name')
+        .select(`
+          ordonnance_file_path, 
+          ordonnance_file_name,
+          fichier_supplementaire_1_path,
+          fichier_supplementaire_1_name,
+          fichier_supplementaire_2_path,
+          fichier_supplementaire_2_name,
+          fichier_supplementaire_3_path,
+          fichier_supplementaire_3_name
+        `)
         .eq('id', editTraitementData.id)
         .single();
         
@@ -472,6 +514,37 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
           // Continue without the file update
         }
       }
+
+      // Handle supplementary files upload
+      const supplementaryFilePaths: (string | null)[] = [
+        currentData?.fichier_supplementaire_1_path || null,
+        currentData?.fichier_supplementaire_2_path || null,
+        currentData?.fichier_supplementaire_3_path || null
+      ];
+      const supplementaryFileNames: (string | null)[] = [
+        currentData?.fichier_supplementaire_1_name || null,
+        currentData?.fichier_supplementaire_2_name || null,
+        currentData?.fichier_supplementaire_3_name || null
+      ];
+      
+      for (let i = 0; i < editTraitementSupplementaryFiles.length; i++) {
+        const file = editTraitementSupplementaryFiles[i];
+        if (file) {
+          // Delete old file if it exists
+          if (supplementaryFilePaths[i]) {
+            await supabase.storage
+              .from('traitementsordonnances')
+              .remove([supplementaryFilePaths[i]!]);
+          }
+          
+          // Upload new file
+          const uploadedPath = await uploadFile(file, 'traitementsordonnances');
+          if (uploadedPath) {
+            supplementaryFilePaths[i] = uploadedPath;
+            supplementaryFileNames[i] = file.name;
+          }
+        }
+      }
       
       const { error } = await supabase
         .from('traitements')
@@ -481,6 +554,12 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
           ordonnance: editTraitementData.ordonnance.trim() || null,
           ordonnance_file_path: filePath,
           ordonnance_file_name: fileName,
+          fichier_supplementaire_1_path: supplementaryFilePaths[0],
+          fichier_supplementaire_1_name: supplementaryFileNames[0],
+          fichier_supplementaire_2_path: supplementaryFilePaths[1],
+          fichier_supplementaire_2_name: supplementaryFileNames[1],
+          fichier_supplementaire_3_path: supplementaryFilePaths[2],
+          fichier_supplementaire_3_name: supplementaryFileNames[2],
           observation: editTraitementData.observation.trim() || null,
           date_fin: editTraitementData.date_fin ? new Date(editTraitementData.date_fin) : null,
         })
@@ -495,6 +574,8 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
 
       setIsEditingTraitement(false);
       setEditTraitementFile(null);
+      setEditTraitementSupplementaryFiles([null, null, null]);
+      setShowEditSupplementaryFiles(false);
       setIsSavingTraitement(false);
       
       // Refresh traitements
@@ -717,6 +798,14 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
       date_fin: traitement.date_fin ? new Date(traitement.date_fin).toISOString().split('T')[0] : '',
     });
     setEditTraitementFile(null);
+    setEditTraitementSupplementaryFiles([null, null, null]);
+    
+    // Afficher la section des fichiers supplémentaires s'il y en a déjà
+    const hasSupplementaryFiles = traitement.fichier_supplementaire_1_path || 
+                                  traitement.fichier_supplementaire_2_path || 
+                                  traitement.fichier_supplementaire_3_path;
+    setShowEditSupplementaryFiles(hasSupplementaryFiles);
+    
     setIsEditingTraitement(true);
   };
 
@@ -746,6 +835,28 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
     }
+  };
+
+  const handleSupplementaryFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>, 
+    index: number, 
+    setFiles: React.Dispatch<React.SetStateAction<(File | null)[]>>
+  ) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFiles(prev => {
+        const newFiles = [...prev];
+        newFiles[index] = e.target.files![0];
+        return newFiles;
+      });
+    }
+  };
+
+  const removeSupplementaryFile = (index: number, setFiles: React.Dispatch<React.SetStateAction<(File | null)[]>>) => {
+    setFiles(prev => {
+      const newFiles = [...prev];
+      newFiles[index] = null;
+      return newFiles;
+    });
   };
 
   const uploadFile = async (file: File, bucket: string): Promise<string | null> => {
@@ -904,6 +1015,76 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                     <p className="text-sm text-muted-foreground">{traitementFile.name}</p>
                   )}
                 </div>
+
+                {/* Bouton pour révéler les fichiers supplémentaires */}
+                {!showSupplementaryFiles && (
+                  <div className="space-y-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSupplementaryFiles(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Ajouter des fichiers supplémentaires (max 3)
+                    </Button>
+                  </div>
+                )}
+
+                {/* Fichiers supplémentaires - affichés à la demande */}
+                {showSupplementaryFiles && (
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Fichiers supplémentaires</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowSupplementaryFiles(false);
+                          setTraitementSupplementaryFiles([null, null, null]);
+                        }}
+                        className="h-auto p-1"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    {[0, 1, 2].map((index) => (
+                      <div key={index} className="space-y-2">
+                        <Label htmlFor={`supplementary-file-${index}`} className="text-sm">
+                          Fichier {index + 1} (optionnel)
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id={`supplementary-file-${index}`}
+                            type="file"
+                            onChange={(e) => handleSupplementaryFileChange(e, index, setTraitementSupplementaryFiles)}
+                            accept=".pdf,.png,.jpg,.jpeg"
+                            className="flex-1"
+                          />
+                          {traitementSupplementaryFiles[index] && (
+                            <Button 
+                              type="button"
+                              variant="outline" 
+                              size="icon"
+                              onClick={() => removeSupplementaryFile(index, setTraitementSupplementaryFiles)}
+                              className="flex-none"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        {traitementSupplementaryFiles[index] && (
+                          <p className="text-sm text-muted-foreground">
+                            {traitementSupplementaryFiles[index]!.name}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   <Label htmlFor="traitement-observation">Observations</Label>
@@ -952,7 +1133,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                 <TableHead>Date</TableHead>
                 <TableHead>Fin</TableHead>
                 <TableHead>Ordonnance</TableHead>
-                <TableHead>Fichier</TableHead>
+                <TableHead>Fichiers</TableHead>
                 <TableHead>Observations</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -965,23 +1146,54 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                   <TableCell>{formatDate(traitement.date_fin)}</TableCell>
                   <TableCell>{traitement.ordonnance || "-"}</TableCell>
                   <TableCell>
-                    {traitement.ordonnance_file_path ? (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => downloadFile(
-                          traitement.ordonnance_file_path!, 
-                          traitement.ordonnance_file_name || 'ordonnance.pdf',
-                          'traitementsordonnances'
-                        )}
-                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                      >
-                        <FileText className="h-4 w-4" />
-                        <span>Télécharger</span>
-                      </Button>
-                    ) : (
-                      "-"
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {traitement.ordonnance_file_path ? (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => downloadFile(
+                            traitement.ordonnance_file_path!, 
+                            traitement.ordonnance_file_name || 'ordonnance.pdf',
+                            'traitementsordonnances'
+                          )}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 justify-start h-auto py-1"
+                        >
+                          <FileText className="h-4 w-4" />
+                          <span>Ordonnance</span>
+                        </Button>
+                      ) : null}
+                      
+                      {/* Fichiers supplémentaires */}
+                      {[
+                        { path: traitement.fichier_supplementaire_1_path, name: traitement.fichier_supplementaire_1_name },
+                        { path: traitement.fichier_supplementaire_2_path, name: traitement.fichier_supplementaire_2_name },
+                        { path: traitement.fichier_supplementaire_3_path, name: traitement.fichier_supplementaire_3_name }
+                      ].map((file, index) => 
+                        file.path ? (
+                          <Button 
+                            key={index}
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => downloadFile(
+                              file.path!, 
+                              file.name || `fichier_${index + 1}.pdf`,
+                              'traitementsordonnances'
+                            )}
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 justify-start h-auto py-1"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>Fichier {index + 1}</span>
+                          </Button>
+                        ) : null
+                      )}
+                      
+                      {!traitement.ordonnance_file_path && 
+                       !traitement.fichier_supplementaire_1_path && 
+                       !traitement.fichier_supplementaire_2_path && 
+                       !traitement.fichier_supplementaire_3_path && (
+                        <span>-</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{traitement.observation || "-"}</TableCell>
                   <TableCell className="text-right">
@@ -1065,6 +1277,77 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                                 <p className="text-sm text-muted-foreground">{editTraitementFile.name}</p>
                               )}
                             </div>
+
+                            {/* Bouton pour révéler les fichiers supplémentaires en édition */}
+                            {!showEditSupplementaryFiles && (
+                              <div className="space-y-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowEditSupplementaryFiles(true)}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Ajouter des fichiers supplémentaires (max 3)
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Fichiers supplémentaires en édition - affichés à la demande */}
+                            {showEditSupplementaryFiles && (
+                              <div className="space-y-4 border-t pt-4">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium">Fichiers supplémentaires</Label>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setShowEditSupplementaryFiles(false);
+                                      setEditTraitementSupplementaryFiles([null, null, null]);
+                                    }}
+                                    className="h-auto p-1"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+
+                                
+                                {[0, 1, 2].map((index) => (
+                                  <div key={index} className="space-y-2">
+                                    <Label htmlFor={`edit-supplementary-file-${index}`} className="text-sm">
+                                      Fichier {index + 1} (optionnel)
+                                    </Label>
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        id={`edit-supplementary-file-${index}`}
+                                        type="file"
+                                        onChange={(e) => handleSupplementaryFileChange(e, index, setEditTraitementSupplementaryFiles)}
+                                        accept=".pdf,.png,.jpg,.jpeg"
+                                        className="flex-1"
+                                      />
+                                      {editTraitementSupplementaryFiles[index] && (
+                                        <Button 
+                                          type="button"
+                                          variant="outline" 
+                                          size="icon"
+                                          onClick={() => removeSupplementaryFile(index, setEditTraitementSupplementaryFiles)}
+                                          className="flex-none"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                    {editTraitementSupplementaryFiles[index] && (
+                                      <p className="text-sm text-muted-foreground">
+                                        {editTraitementSupplementaryFiles[index]!.name}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                             
                             <div className="space-y-2">
                               <Label htmlFor="edit-traitement-observation">Observations</Label>
@@ -1368,7 +1651,7 @@ const HealthManagement: React.FC<HealthManagementProps> = ({ animalId }) => {
                 <TableHead>Désignation</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Ordonnance</TableHead>
-                <TableHead>Fichier</TableHead>
+                <TableHead>Fichiers</TableHead>
                 <TableHead>Observations</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
