@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import AnimalCard from './AnimalCard';
 import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/types/supabase';
-import { Loader2, Search, AlertTriangle, HeartHandshake, HeartPulse } from 'lucide-react';
+import { Loader2, Search, AlertTriangle, HeartHandshake, HeartPulse, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Navbar } from './Navbar';
 import Header from './Header';
-import { FixedSizeGrid as Grid } from 'react-window';
-import { useRef } from 'react';
 
 type Animal = Database['public']['Tables']['animaux']['Row'];
 type Quarantine = Database['public']['Tables']['quarantines']['Row'];
@@ -34,6 +32,8 @@ const AnimalDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<{ id: number, nom: string }[]>([]);
   const [categoryMap, setCategoryMap] = useState<Record<number, string>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   // Setters qui stockent dans le sessionStorage
   const setAndStoreSearchTerm = (value: string) => {
@@ -209,19 +209,32 @@ const AnimalDashboard = () => {
     };
   }, []);
 
-  const filteredAnimals = animals.filter(animal => {
-    const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch =
-      (animal.nom?.toLowerCase().includes(searchTermLower) || false) ||
-      (animal.race?.toLowerCase().includes(searchTermLower) || false);
-    const matchesCategory = !selectedCategoryId || animal.categorie_id === selectedCategoryId;
-    const matchesQuarantine = !showQuarantineOnly || animal.isInQuarantine;
-    const matchesDeceased = !showDeceasedOnly || animal.isDeceased;
-    const matchesAdopted = !showAdoptedOnly || animal.isAdopted;
-    const matchesTraitement = !showTraitementOnly || animal.hasTraitement;
-    const shouldExclude = (!showDeceasedOnly && animal.isDeceased) || (!showAdoptedOnly && animal.isAdopted);
-    return matchesSearch && matchesCategory && matchesQuarantine && matchesDeceased && matchesAdopted && matchesTraitement && !shouldExclude;
-  });
+  const filteredAnimals = useMemo(() => {
+    return animals.filter(animal => {
+      const searchTermLower = searchTerm.toLowerCase();
+      const matchesSearch =
+        (animal.nom?.toLowerCase().includes(searchTermLower) || false) ||
+        (animal.race?.toLowerCase().includes(searchTermLower) || false);
+      const matchesCategory = !selectedCategoryId || animal.categorie_id === selectedCategoryId;
+      const matchesQuarantine = !showQuarantineOnly || animal.isInQuarantine;
+      const matchesDeceased = !showDeceasedOnly || animal.isDeceased;
+      const matchesAdopted = !showAdoptedOnly || animal.isAdopted;
+      const matchesTraitement = !showTraitementOnly || animal.hasTraitement;
+      const shouldExclude = (!showDeceasedOnly && animal.isDeceased) || (!showAdoptedOnly && animal.isAdopted);
+      return matchesSearch && matchesCategory && matchesQuarantine && matchesDeceased && matchesAdopted && matchesTraitement && !shouldExclude;
+    });
+  }, [animals, searchTerm, selectedCategoryId, showQuarantineOnly, showDeceasedOnly, showAdoptedOnly, showTraitementOnly]);
+
+  // Calculer la pagination
+  const totalPages = Math.ceil(filteredAnimals.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedAnimals = filteredAnimals.slice(startIndex, endIndex);
+
+  // Réinitialiser à la page 1 quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategoryId, showQuarantineOnly, showDeceasedOnly, showAdoptedOnly, showTraitementOnly]);
 
   const uniqueCategories = Array.from(new Set(animals.map(animal => animal.categorie_id).filter(Boolean)));
   const quarantineCount = animals.filter(animal => animal.isInQuarantine).length;
@@ -332,7 +345,7 @@ const AnimalDashboard = () => {
 
         {/* Grille d'animaux */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
-          {filteredAnimals.map((animal) => (
+          {paginatedAnimals.map((animal) => (
             <AnimalCard key={animal.id} animal={animal} categoryName={categoryMap[animal.categorie_id] || ''} />
           ))}
         </div>
@@ -341,6 +354,72 @@ const AnimalDashboard = () => {
           <p className="text-center text-gray-500 mt-6">
             Aucun animal ne correspond à votre recherche
           </p>
+        )}
+
+        {/* Pagination */}
+        {filteredAnimals.length > itemsPerPage && (
+          <div className="flex flex-col items-center gap-4 mt-6">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Précédent
+              </Button>
+              
+              {/* Onglets de pagination */}
+              <div className="flex items-center gap-1 flex-wrap justify-center">
+                {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
+                  let pageNum: number;
+                  
+                  if (totalPages <= 10) {
+                    // Afficher toutes les pages si <= 10
+                    pageNum = i + 1;
+                  } else if (currentPage <= 5) {
+                    // Afficher les premières pages
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 4) {
+                    // Afficher les dernières pages
+                    pageNum = totalPages - 9 + i;
+                  } else {
+                    // Afficher autour de la page courante
+                    pageNum = currentPage - 5 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className="min-w-[40px]"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1"
+              >
+                Suivant
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <p className="text-sm text-gray-500">
+              Affichage de {startIndex + 1} à {Math.min(endIndex, filteredAnimals.length)} sur {filteredAnimals.length} animal(s)
+            </p>
+          </div>
         )}
       </div>
 

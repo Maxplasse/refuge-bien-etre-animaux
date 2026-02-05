@@ -38,7 +38,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, MoreVertical, PlusCircle, Trash, UserPlus, ShieldAlert, Edit, Eye, FileDown, Cat, User, Download } from 'lucide-react';
+import { Loader2, MoreVertical, PlusCircle, Trash, UserPlus, ShieldAlert, Edit, Eye, FileDown, Cat, User, Download, List, Tag } from 'lucide-react';
 import Header from '@/components/Header';
 import { Database } from '@/types/supabase';
 import * as XLSX from 'xlsx';
@@ -85,6 +85,7 @@ const AdminPortal: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("users");
+  const [activeAnimalSubTab, setActiveAnimalSubTab] = useState("animals-list");
   const [users, setUsers] = useState<User[]>([]);
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [loadingAnimals, setLoadingAnimals] = useState(true);
@@ -107,7 +108,7 @@ const AdminPortal: React.FC = () => {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [categories, setCategories] = useState<{ id: number, nom: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: number, nom: string, animalCount: number }[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
   const [isAnimalDialogOpen, setIsAnimalDialogOpen] = useState(false);
@@ -117,6 +118,7 @@ const AdminPortal: React.FC = () => {
   const [animalDateEntree, setAnimalDateEntree] = useState('');
   const [animalCategoryId, setAnimalCategoryId] = useState<number | null>(null);
   const [isCreatingAnimal, setIsCreatingAnimal] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState<number | null>(null);
 
   // Vérifier si l'utilisateur est admin
   useEffect(() => {
@@ -235,17 +237,42 @@ const AdminPortal: React.FC = () => {
     loadAnimals();
   }, [activeTab]);
 
-  // Charger la liste des catégories
+  // Charger la liste des catégories avec le nombre d'animaux
   useEffect(() => {
     const fetchCategories = async () => {
       setLoadingCategories(true);
       try {
-        const { data, error } = await supabase
+        // Récupérer toutes les catégories
+        const { data: categoriesData, error: categoriesError } = await supabase
           .from('categories_animaux')
           .select('id, nom')
           .order('nom', { ascending: true });
-        if (error) throw error;
-        setCategories(data || []);
+        
+        if (categoriesError) throw categoriesError;
+        
+        // Récupérer le nombre d'animaux par catégorie
+        const { data: animalsData, error: animalsError } = await supabase
+          .from('animaux')
+          .select('categorie_id');
+        
+        if (animalsError) throw animalsError;
+        
+        // Compter les animaux par catégorie
+        const animalCounts: Record<number, number> = {};
+        animalsData?.forEach(animal => {
+          if (animal.categorie_id) {
+            animalCounts[animal.categorie_id] = (animalCounts[animal.categorie_id] || 0) + 1;
+          }
+        });
+        
+        // Combiner les données
+        const categoriesWithCounts = (categoriesData || []).map(cat => ({
+          id: cat.id,
+          nom: cat.nom,
+          animalCount: animalCounts[cat.id] || 0
+        }));
+        
+        setCategories(categoriesWithCounts);
       } catch (error) {
         toast({
           title: "Erreur",
@@ -262,12 +289,37 @@ const AdminPortal: React.FC = () => {
   const refreshCategories = async () => {
     setLoadingCategories(true);
     try {
-      const { data, error } = await supabase
+      // Récupérer toutes les catégories
+      const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories_animaux')
         .select('id, nom')
         .order('nom', { ascending: true });
-      if (error) throw error;
-      setCategories(data || []);
+      
+      if (categoriesError) throw categoriesError;
+      
+      // Récupérer le nombre d'animaux par catégorie
+      const { data: animalsData, error: animalsError } = await supabase
+        .from('animaux')
+        .select('categorie_id');
+      
+      if (animalsError) throw animalsError;
+      
+      // Compter les animaux par catégorie
+      const animalCounts: Record<number, number> = {};
+      animalsData?.forEach(animal => {
+        if (animal.categorie_id) {
+          animalCounts[animal.categorie_id] = (animalCounts[animal.categorie_id] || 0) + 1;
+        }
+      });
+      
+      // Combiner les données
+      const categoriesWithCounts = (categoriesData || []).map(cat => ({
+        id: cat.id,
+        nom: cat.nom,
+        animalCount: animalCounts[cat.id] || 0
+      }));
+      
+      setCategories(categoriesWithCounts);
     } catch (error) {
       toast({
         title: "Erreur",
@@ -276,6 +328,62 @@ const AdminPortal: React.FC = () => {
       });
     } finally {
       setLoadingCategories(false);
+    }
+  };
+
+  // Fonction pour supprimer une catégorie
+  const deleteCategory = async (categoryId: number, categoryName: string, animalCount: number) => {
+    // Préparer le message de confirmation avec avertissement si nécessaire
+    let confirmMessage = `Êtes-vous sûr de vouloir supprimer la catégorie "${categoryName}" ?`;
+    
+    if (animalCount > 0) {
+      confirmMessage += `\n\n⚠️ ATTENTION : Cette catégorie est utilisée par ${animalCount} animal(s).\n\nEn supprimant cette catégorie, tous les animaux associés perdront leur catégorie (categorie_id sera mis à null).\n\nCette action est irréversible.`;
+    } else {
+      confirmMessage += `\n\nCette action est irréversible.`;
+    }
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsDeletingCategory(categoryId);
+    try {
+      // Si des animaux utilisent cette catégorie, mettre leur categorie_id à null
+      if (animalCount > 0) {
+        const { error: updateError } = await supabase
+          .from('animaux')
+          .update({ categorie_id: null })
+          .eq('categorie_id', categoryId);
+
+        if (updateError) throw updateError;
+      }
+
+      // Supprimer la catégorie
+      const { error: deleteError } = await supabase
+        .from('categories_animaux')
+        .delete()
+        .eq('id', categoryId);
+
+      if (deleteError) throw deleteError;
+
+      toast({
+        title: "Catégorie supprimée",
+        description: animalCount > 0
+          ? `La catégorie "${categoryName}" a été supprimée. ${animalCount} animal(s) ont été mis à jour (catégorie retirée).`
+          : `La catégorie "${categoryName}" a été supprimée avec succès.`,
+      });
+
+      // Rafraîchir la liste des catégories
+      await refreshCategories();
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la catégorie:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la catégorie.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeletingCategory(null);
     }
   };
 
@@ -1107,37 +1215,22 @@ const AdminPortal: React.FC = () => {
     </Card>
   );
 
-  // Rendu du composant de gestion des animaux
-  const renderAnimalManagement = () => (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Gestion des animaux</CardTitle>
-          <CardDescription>Gérer les informations des animaux du refuge</CardDescription>
+  // Rendu de la liste des animaux
+  const renderAnimalsList = () => (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button className="flex items-center gap-2" onClick={exportToExcel}>
+          <Download className="h-4 w-4" />
+          <span>Exporter en Excel</span>
+        </Button>
+      </div>
+      
+      {loadingAnimals ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-shelter-purple" />
         </div>
-        <div className="flex gap-2">
-          <Button className="flex items-center gap-2" onClick={exportToExcel}>
-            <Download className="h-4 w-4" />
-            <span>Exporter en Excel</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="flex items-center gap-2 border rounded-lg bg-white text-black font-medium shadow-sm hover:bg-gray-100"
-            onClick={() => setIsCategoryDialogOpen(true)}
-          >
-            <PlusCircle className="h-4 w-4" />
-            <span>Ajouter une catégorie</span>
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {renderCategoryDialog()}
-        {renderAnimalDialog()}
-        {loadingAnimals ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-shelter-purple" />
-          </div>
-        ) : (
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1205,21 +1298,120 @@ const AdminPortal: React.FC = () => {
                       {animal.date_entree ? new Date(animal.date_entree).toLocaleDateString('fr-FR') : '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => navigate(`/animal/${animal.id}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Voir
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => navigate(`/animal/${animal.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Voir
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteAnimal(animal.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash className="h-4 w-4 mr-2" />
+                          Supprimer
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+
+  // Rendu de la gestion des catégories
+  const renderCategoriesManagement = () => (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          className="flex items-center gap-2"
+          onClick={() => setIsCategoryDialogOpen(true)}
+        >
+          <PlusCircle className="h-4 w-4" />
+          <span>Ajouter une catégorie</span>
+        </Button>
+      </div>
+      
+      {loadingCategories ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-shelter-purple" />
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Nom de la catégorie</TableHead>
+                <TableHead className="text-center">Nombre d'animaux</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {categories.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10 text-gray-500">
+                    Aucune catégorie trouvée
+                  </TableCell>
+                </TableRow>
+              ) : (
+                categories.map((category) => (
+                  <TableRow key={category.id}>
+                    <TableCell>{category.id}</TableCell>
+                    <TableCell className="font-medium">{category.nom}</TableCell>
+                    <TableCell className="text-center">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        category.animalCount > 0 
+                          ? 'bg-orange-100 text-orange-800' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {category.animalCount}
+                        {category.animalCount > 0 && (
+                          <span className="ml-1" title="Cette catégorie est utilisée par des animaux">⚠️</span>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDeleteAnimal(animal.id)}
-                        className="text-red-500 ml-2"
+                        onClick={() => deleteCategory(category.id, category.nom, category.animalCount)}
+                        disabled={isDeletingCategory === category.id}
+                        className={
+                          category.animalCount > 0
+                            ? "text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-300"
+                            : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                        }
+                        title={
+                          category.animalCount > 0 
+                            ? `Supprimer la catégorie (${category.animalCount} animal(s) seront affectés)` 
+                            : "Supprimer la catégorie"
+                        }
                       >
-                        Supprimer
+                        {isDeletingCategory === category.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Suppression...
+                          </>
+                        ) : (
+                          <>
+                            <Trash className="mr-2 h-4 w-4" />
+                            Supprimer
+                            {category.animalCount > 0 && (
+                              <span className="ml-1">⚠️</span>
+                            )}
+                          </>
+                        )}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -1227,7 +1419,46 @@ const AdminPortal: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Rendu du composant de gestion des animaux
+  const renderAnimalManagement = () => (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Gestion des animaux</CardTitle>
+        <CardDescription>Gérer les informations des animaux du refuge et leurs catégories</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {renderCategoryDialog()}
+        {renderAnimalDialog()}
+        
+        <Tabs 
+          value={activeAnimalSubTab} 
+          onValueChange={setActiveAnimalSubTab}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="animals-list" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              Liste des animaux
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Catégories
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="animals-list">
+            {renderAnimalsList()}
+          </TabsContent>
+          
+          <TabsContent value="categories">
+            {renderCategoriesManagement()}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
